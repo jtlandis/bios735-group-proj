@@ -11,9 +11,30 @@ library(ggplot2)
 
 ```{r}
 tidy_data <- data_set_tidy
+tidy_data
+```
 
+
+```{r}
 ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
   geom_path(aes(group = item)) +
   facet_grid(rows = vars(brand)) +
   theme_classic()
 ```
+
+```{r}
+ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
+  geom_path(aes(group = item, color = PROMO)) +
+  facet_grid(rows = vars(brand), scales = "free_y") +
+  theme_classic()
+```
+
+
+```{r}
+library(dplyr)
+
+group_by(tidy_data, brand) |>
+  summarise(n_items = length(unique(item)), data_points = n())
+
+```
+
