@@ -1,0 +1,19 @@
+---
+title: Pasta Sales :pasta:
+---
+
+```{r}
+#temporary name of package
+library(pastasales)
+library(ggplot2)
+```
+
+
+```{r}
+tidy_data <- data_set_tidy
+
+ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
+  geom_path(aes(group = item)) +
+  facet_grid(rows = vars(brand)) +
+  theme_classic()
+```
