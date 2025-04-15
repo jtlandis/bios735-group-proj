@@ -61,9 +61,10 @@ ll <- function(
   alpha,
   betas,
   gamma,
-  sigma2
+  sigma2,
+  n = 1
 ) {
-  n <- t <- length(y)
+  t <- length(y)
   B <- beta_mat(betas, t, q = length(betas))
   A <- diag(t) - B
   #A_inv <- solve(A)
