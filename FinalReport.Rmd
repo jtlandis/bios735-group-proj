@@ -1,0 +1,47 @@
+---
+title: "BIOS 735 Report"
+author: 'Group 3: Abby Foes, Zheng Lan, Justin Landis, Yu Liu, Alec Reinhardt'
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Introduction
+
+We identified a dataset for pasta sales from an Italian grocery store from January 2014 to December 2018. This datasets includes 116 time series, each with 1,798 time points, including the quantity of sales for specific pasta items and whether they were on promotion at the time. The time series are hierarchical, with four brands and 45 unique items per brand. Based on preliminary data analysis, there is evidence of common temporal patterns in item sales within each brand as well as a relationship between promotion and sales. 
+
+## Research Questions
+(1) Can we improve forecasting accuracy by accounting for the hierarchical structure in the data compared with modeling each brand and item independently? What about models that account for sparsity (for those items with many days of no sales) or periodicity?
+
+(2) How do temporal trends and the promotion-sales relationship vary across pasts brands? Which points in time show the largest deviations? Is there evidence of periodic (seasonal) trends, and how do these relate across brands and items?
+
+# Methods
+
+## Models
+
+To develop a forecasting model, we will adapt various classical approaches for time series modeling. For instance, the autoregressive model (AR) (see, e.g. Box et al. (2015)) assumes that the current outcome depends linearly on the previously observed outcomes (up to a certain lag $q$), covariates, and a noise term. This can be expressed as 
+
+$$y_t = \alpha_0+\sum_{l=1}^q \beta_l y_{t-l} + \gamma x_{t} + \epsilon_{t}$$
+
+
+where $y_t$ is the outcome at time point $t$, $\alpha_0$ is the population intercept, the $\beta_l$ terms capture the dependence between $y_t$ and previous time points, $\gamma$ captures the effect of (time-varying) covariate $x_t$ on $y_t$, and $\epsilon_t$ is the noise term, assumed to be mean zero Gaussian. As a first step, we plan to fit these models for each brand and item independently. The R package `astsa` utilizes model fitting methods such as Burg's Algorithm and Yule-Walker equations. However, we plan to also implement a MLE-based approach. Chapter 2 of the book (Funatogawa et al. (2018)) details the likelihood and steps for MLE for AR models.
+
+
+In order to capture shared patterns among items within each brand, we propose a mixed effects AR model (see Nicholls and Quinn (2012) for example) of the form
+
+$$ y_{hi,t} = (\alpha_0+a_h)+\sum_{l=1}^q (\beta_l+b_{h,l}) y_{hi,t-l} + (\gamma+g_h) x_{hi,t} + \epsilon_{t}$$
+
+$$ \alpha_h \sim N(0,\sigma_{\alpha}^2), \ b_{h,l} \sim N(0,\sigma_{\beta}^2), \ g_h \sim N(0,\sigma_{\gamma}^2), \ \epsilon_t \sim N(0,\sigma_{\epsilon}^2)$$
+
+where we introduce random intercept $a_h$, and random slopes $b_{h,l}$ and $g_h$ for the effects of previous timepoints and covariates, respectively. We assume that each term comes from a common distribution specific to each brand, in effect pooling information across items within each brand while still allowing for deviations. We will also consider simplifications and possible extensions of the above model, including modeling cross-brand dependencies. For model fitting, we will consider a Bayesian variation of the above models, with suitable priors for model coefficients and residual noise. We will implement a Markov Chain Monte Carlo (MCMC) algorithm to sample the posterior of model parameters, which in turn allows for both prediction and uncertainty quantification (e.g. credible intervals).
+
+### Moving Average Model
+
+$$Y_{i,t} = \alpha + \epsilon_{i,t} +\sum_{j=1}^q\theta_i\epsilon_{i,t-j}$$
+
+
+### ARMA Model
+
+
+$$y_t = \alpha + \beta_1 y_{t-1}+\ldots +\beta_p y_{t-p} + \epsilon_t + \epsilon_{t-1} \theta_{q} + \ldots + \epsilon_{t-q} \theta_{q}$$
+
+
