@@ -39,8 +39,8 @@ beta_mat <- function(betas, t, q) {
 #' betas <- c(.1, .2, .3)
 #' gamma <-  10
 #' alpha <- 3
-#' t <- 10
-#' x <- c(0, 0, 0, 0, 1, 1, 1, 0, 0, 0)
+#' t <- 100
+#' x <- rep(c(0, 0, 0, 0, 1, 1, 1, 1, 0, 0), 10)
 #' A <- diag(t) - beta_mat(betas, t, q = length(betas))
 #' A_inv <- solve(A)
 #' A_inv
