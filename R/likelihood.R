@@ -13,7 +13,7 @@ beta_mat <- function(betas, t, q) {
     is.numeric(betas),
     length(betas) == q,
     t > 0,
-    q < t,
+    q < t
   )
 
   out <- matrix(0, nrow = t, ncol = t)
