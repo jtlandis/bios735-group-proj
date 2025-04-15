@@ -45,7 +45,7 @@ mle_beta <- function(y, x, alpha, betas, gamma, n = 1, index) {
     function(i, betas, y, z) {
       beta <- betas[i]
       aligned <- align_head_tail(y, z, i)
-      sum(aligned[[1]] * aligned[[2]])
+      beta * sum(aligned[[1]] * aligned[[2]])
     },
     numeric(1),
     betas = betas,
@@ -53,7 +53,7 @@ mle_beta <- function(y, x, alpha, betas, gamma, n = 1, index) {
     z = z
   )
   time_sums <- sum(y * z)
-  scale <- -1 * beta_sums[index] / betas[index]
+  scale <- beta_sums[index] / betas[index]
   beta_sums <- beta_sums[-index]
 
   mle <- time_sums - sum(beta_sums) - sum(alpha * z) - sum(gamma * x * z)
