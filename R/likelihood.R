@@ -78,3 +78,81 @@ ll <- function(
 
   loglik
 }
+
+dlb <- function(y, resid, sigma2, index) {
+  sum(y[seq_len(length(y) - index)] * resid[-seq_len(index)]) / sigma2
+}
+
+dla <- function(resid, sigma2) {
+  sum(resid) / sigma2
+}
+
+dlg <- function(resid, x, sigma2) {
+  sum(resid * x) / sigma2
+}
+
+dls2 <- function(resid, sigma2, n) {
+  t <- length(resid)
+  sigma4 <- sigma2^2
+  1 / (2 * sigma4) * sum(resid^2) - (n * t / (2 * sigma2))
+}
+
+optim_fit <- function(
+  y,
+  x,
+  alpha,
+  betas,
+  gamma,
+  sigma2,
+  n = 1
+) {
+  force(n)
+  t <- length(y)
+  q <- length(betas)
+  fit <- optimx::optimx(
+    par = c(alpha, betas, gamma, sigma2),
+    fn = function(x, y, X) {
+      alpha <- x[1]
+      betas <- x[2:(q + 1)]
+      gamma <- x[q + 2]
+      sigma2 <- x[q + 3]
+
+      ll(y, X, alpha, betas, gamma, sigma2)
+    },
+    gr = function(x, y, X) {
+      alpha <- x[1]
+      betas <- x[2:(q + 1)]
+      gamma <- x[q + 2]
+      sigma2 <- x[q + 3]
+
+      B <- beta_mat(betas, t, q = q)
+      A <- diag(t) - B
+      Ay <- A %*% y
+      resid <- Ay - alpha - (gamma * X)
+
+      c(
+        dla(resid, sigma2),
+        vapply(seq_len(q), function(i) dlb(y, resid, sigma2, i), numeric(1)),
+        dlg(resid, X, sigma2),
+        dls2(resid, sigma2, n)
+      )
+    },
+    y = y,
+    X = x,
+    method = "BFGS",
+    control = list(
+      trace = 0,
+      maximize = TRUE
+    )
+  )
+  structure(
+    list(
+      alpha = unname(as.numeric(fit[1])),
+      betas = unname(as.numeric(fit[2:(q + 1)])),
+      gamma = unname(as.numeric(fit[q + 2])),
+      sigma2 = unname(as.numeric(fit[q + 3]))
+    ),
+    fit = fit,
+    class = "optim_fit"
+  )
+}
