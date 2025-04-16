@@ -93,12 +93,12 @@ mle_params <- function(y, x, alpha, betas, gamma, sigma2) {
     expand.grid,
     args = c(
       list(
-        alpha = seq(alpha_prior, alpha, len = 3)
+        alpha = seq(alpha_prior, alpha, len = 2)
       ),
       stats::setNames(
         Map(
           function(b, bp) {
-            seq(b, bp, len = 3)
+            seq(b, bp, len = 2)
           },
           b = betas,
           bp = betas_prior
@@ -106,8 +106,8 @@ mle_params <- function(y, x, alpha, betas, gamma, sigma2) {
         nm = sprintf("beta_%i", seq_along(betas))
       ),
       list(
-        gamma = seq(gamma_prior, gamma, len = 3),
-        sigma2 = c(sigma2_prior, sigma2, len = 3)
+        gamma = seq(gamma_prior, gamma, len = 2),
+        sigma2 = c(sigma2_prior, sigma2, len = 2)
       )
     )
   )
@@ -181,8 +181,7 @@ mle_params <- function(y, x, alpha, betas, gamma, sigma2) {
 #'  gamma = bad_gamma,
 #'  sigma2 = bad_sigma2,
 #'  times = 150,
-#'  trace_mod = 10
-#')
+#'  trace_mod = 10)
 optim_mle_params <- function(
   y,
   x,
