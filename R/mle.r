@@ -12,7 +12,7 @@ mle_gamma <- function(y, x, betas, alpha, n = 1) {
   B <- beta_mat(betas, t, q = length(betas))
   A <- diag(t) - B
   Ay <- A %*% y
-  ((x %*% Ay) - sum(alpha * x)) / sum(x * x)
+  as.vector(((x %*% Ay) - sum(alpha * x)) / sum(x * x))
 }
 
 mle_sigma2 <- function(y, x, betas, alpha, gamma, n = 1) {
