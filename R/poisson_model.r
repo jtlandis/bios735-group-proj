@@ -95,7 +95,11 @@ ddll_pois <- function(y, x, alpha, betas, gamma) {
 
 bfgs <- function(y, x, alpha, betas, gamma, max_iter = 1000, trace_mod = 1) {
   q <- length(betas)
-  beta_slice <- 2:(q + 1)
+  if (q == 0) {
+    beta_slice <- 0
+  } else {
+    beta_slice <- 2:(q + 1)
+  }
   gamma_slice <- q + 2
   ident <- diag(q + 2)
   f <- function(params) {
@@ -127,29 +131,63 @@ bfgs <- function(y, x, alpha, betas, gamma, max_iter = 1000, trace_mod = 1) {
   params <- c(alpha, betas, gamma)
   grade <- g(params)
   LL <- f(params)
-  count <- 0L
+  count_cache <- count <- 0L
+  step_size <- 0.1
+  diffs <- numeric(max_iter)
+  diff_slice <- 0:2
   while (count < max_iter) {
     count <- count + 1L
-    s <- step_by(params, 0.1)
-    params <- params + s
-    grade_ <- g(params)
-    H <- update(s, grade_ - grade)
-    LL_ <- f(params)
-    if (trace_mod %% count == 0) {
+    s <- step_by(params, step_size)
+    params_ <- params + s
+    grade_ <- g(params_)
+    H_ <- update(s, grade_ - grade)
+    LL_ <- f(params_)
+    LL_diff <- LL_ - LL
+    diffs[count] <- LL_diff
+    if (count %% trace_mod == 0) {
       cat(
         sprintf(
-          "Iteration %i: LL = %.3f params: %s\n",
+          "Iteration %i: LL = %.3f, LL_old: %.3f, params: %s, step size: %.6f\n",
           count,
           LL_,
-          paste(round(params, 3), collapse = ", ")
+          LL,
+          paste(round(params_, 3), collapse = ", "),
+          step_size
         )
       )
     }
+
     if (abs(LL_ - LL) < 1e-6) {
-      return(params)
+      cat("INFO: Convergence reached\n")
+      return(params_)
     }
+
+    # if we every increase in LL try again
+    # with a smaller step step_size
+    if (LL_ < LL) {
+      if (count - count_cache > 1) {
+        cat("INFO: Decreasing step size\n")
+        step_size <- step_size / 2
+        #count <- count - 1L
+        count_cache <- count
+        next
+      }
+    } else {
+      if (count - count_cache > 2) {
+        .diff <- diff(diffs[(count - 2):count])
+        slp <- .diff / mean(.diff) - 1
+        if (all(slp > -0.2) && all(slp < 0.2)) {
+          cat("INFO: Increasing step size\n")
+          step_size <- step_size * 1.8
+          count_cache <- count
+        }
+      }
+    }
+
     LL <- LL_
     grade <- grade_
+    params <- params_
+    H <- H_
   }
 
   params
