@@ -55,6 +55,7 @@ beta_mat <- function(betas, t, q) {
 #' ## log-likelihood on dummy values (more negative)
 #' ll(1:10, x, alpha, betas, gamma, sigma2)
 #' ll(rep(1, 10), x, alpha, betas, gamma, sigma2)
+#' @export
 ll <- function(
   y,
   x,
@@ -62,25 +63,30 @@ ll <- function(
   betas,
   gamma,
   sigma2,
-  n = 1
+  n = ncol(y) %||% 1
 ) {
-  t <- length(y)
+  if (is.vector(y)) {
+    y <- matrix(y, ncol = 1, nrow = length(y))
+    x <- matrix(x, ncol = 1, nrow = length(x))
+  }
+  t <- nrow(y)
   B <- beta_mat(betas, t, q = length(betas))
   A <- diag(t) - B
-  #A_inv <- solve(A)
-  #mu <- A_inv %*% (alpha + (gamma * x))
-  #V <- sigma2 * (A_inv %*% t(A_inv))
 
   Ay <- A %*% y
   resid <- Ay - alpha - (gamma * x)
 
-  loglik <- -n * t / 2 * log(2 * pi * sigma2) - 1 / (2 * sigma2) * sum(resid^2)
+  loglik <- -n *
+    t /
+    2 *
+    log(2 * pi * sigma2) -
+    1 / (2 * sigma2) * sum(sqrt(colSums(resid^2)))
 
   loglik
 }
 
 dlb <- function(y, resid, sigma2, index) {
-  sum(y[seq_len(length(y) - index)] * resid[-seq_len(index)]) / sigma2
+  sum(y[seq_len(nrow(y) - index), ] * resid[-seq_len(index), ]) / sigma2
 }
 
 dla <- function(resid, sigma2) {
@@ -94,7 +100,7 @@ dlg <- function(resid, x, sigma2) {
 dls2 <- function(resid, sigma2, n) {
   t <- length(resid)
   sigma4 <- sigma2^2
-  1 / (2 * sigma4) * sum(resid^2) - (n * t / (2 * sigma2))
+  1 / (2 * sigma4) * sum(sqrt(colSums(resid^2))) - (n * t / (2 * sigma2))
 }
 
 optim_fit <- function(

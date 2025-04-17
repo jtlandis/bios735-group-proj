@@ -1,5 +1,6 @@
-mle_alpha <- function(y, x, betas, gamma, n = 1) {
-  t <- length(y)
+mle_alpha <- function(y, x, betas, gamma) {
+  t <- nrow(y)
+  n <- ncol(y)
   B <- beta_mat(betas, t, q = length(betas))
   A <- diag(t) - B
   Ay <- A %*% y
@@ -7,16 +8,19 @@ mle_alpha <- function(y, x, betas, gamma, n = 1) {
   sum(Ay - gammax) / (t * n)
 }
 
-mle_gamma <- function(y, x, betas, alpha, n = 1) {
-  t <- length(y)
+#' @param y a matrix of dimension t by n
+#' @param x a matrix of dimension t by n
+mle_gamma <- function(y, x, betas, alpha) {
+  t <- nrow(y)
   B <- beta_mat(betas, t, q = length(betas))
   A <- diag(t) - B
   Ay <- A %*% y
-  as.vector(((x %*% Ay) - sum(alpha * x)) / sum(x * x))
+  sum(Ay * x - (alpha * x)) / sum(x * x)
 }
 
-mle_sigma2 <- function(y, x, betas, alpha, gamma, n = 1) {
-  t <- length(y)
+mle_sigma2 <- function(y, x, betas, alpha, gamma) {
+  t <- nrow(y)
+  n <- ncol(y)
   B <- beta_mat(betas, t, q = length(betas))
   A <- diag(t) - B
   Ay <- A %*% y
@@ -30,6 +34,14 @@ shift_by <- function(x, n) {
   c(rep(0, n), x[seq_len(N - n)])
 }
 
+shift_mat_row_by <- function(mat, n) {
+  index_zero <- seq_len(n)
+  index_shift <- seq_len(nrow(mat) - n)
+  mat[-index_zero, ] <- mat[index_shift, ]
+  mat[index_zero, ] <- 0
+  mat
+}
+
 align_head_tail <- function(vec_head, vec_tail, n) {
   list(
     vec_head[seq_len(length(vec_head) - n)],
@@ -37,14 +49,22 @@ align_head_tail <- function(vec_head, vec_tail, n) {
   )
 }
 
-mle_beta <- function(y, x, alpha, betas, gamma, n = 1, index) {
+align_head_tail_mat <- function(vec_head, vec_tail, n) {
+  list(
+    vec_head[seq_len(nrow(vec_head) - n), ],
+    vec_tail[-seq_len(n), ]
+  )
+}
+
+mle_beta <- function(y, x, alpha, betas, gamma, index) {
+  n <- ncol(y)
   # the derivative wrt beta_index
-  z <- shift_by(y, index) * -1
+  z <- shift_mat_row_by(y, index) * -1
   beta_sums <- vapply(
     seq_along(betas),
     function(i, betas, y, z) {
       beta <- betas[i]
-      aligned <- align_head_tail(y, z, i)
+      aligned <- align_head_tail_mat(y, z, i)
       beta * sum(aligned[[1]] * aligned[[2]])
     },
     numeric(1),
@@ -76,8 +96,7 @@ mle_params <- function(y, x, alpha, betas, gamma, sigma2) {
     x = x,
     alpha = alpha_prior,
     betas = betas_prior,
-    gamma = gamma_prior,
-    n = 1
+    gamma = gamma_prior
   )
   gamma <- mle_gamma(y, x, betas = betas_prior, alpha = alpha_prior)
   sigma2 <- mle_sigma2(
@@ -85,8 +104,7 @@ mle_params <- function(y, x, alpha, betas, gamma, sigma2) {
     x,
     betas = betas_prior,
     alpha = alpha_prior,
-    gamma = gamma_prior,
-    n = 1
+    gamma = gamma_prior
   )
 
   grid <- do.call(
@@ -192,7 +210,7 @@ optim_mle_params <- function(
   times = 100,
   trace_mod = 1
 ) {
-  params <- list(
+  prior_params <- list(
     alpha = alpha,
     betas = betas,
     gamma = gamma,
@@ -203,16 +221,17 @@ optim_mle_params <- function(
     params <- mle_params(
       y = y,
       x = x,
-      alpha = params$alpha,
-      betas = params$betas,
-      gamma = params$gamma,
-      sigma2 = params$sigma2
+      alpha = prior_params$alpha,
+      betas = prior_params$betas,
+      gamma = prior_params$gamma,
+      sigma2 = prior_params$sigma2
     )
 
     if (i %% trace_mod == 0) {
       cat(
         sprintf(
-          "ll: %0.05f, alpha: %0.05f,  %s, gamma: %0.3f, sigma2: %0.3f\n",
+          "step: %i, ll: %0.05f, alpha: %0.05f,  %s, gamma: %0.3f, sigma2: %0.3f\n",
+          i,
           params$ll,
           params$alpha,
           paste(
@@ -226,6 +245,12 @@ optim_mle_params <- function(
         )
       )
     }
+    if (identical(params, prior_params)) {
+      warning("Step was identical to last")
+      return(params)
+    }
+
+    prior_params <- params
   }
 
   params
