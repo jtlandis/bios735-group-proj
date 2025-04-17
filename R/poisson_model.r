@@ -90,7 +90,7 @@ ddll_pois <- function(y, x, alpha, betas, gamma) {
     j <- k %/% dim + 1
     out[i, j] <- sum(lambdas * data[[i]] * data[[j]])
   }
-  out
+  -out
 }
 
 bfgs <- function(y, x, alpha, betas, gamma, max_iter = 1000, trace_mod = 1) {
