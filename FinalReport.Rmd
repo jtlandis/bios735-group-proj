@@ -89,47 +89,45 @@ m_t = \underbrace{\sum_{l=1}^{q} \beta_l y_{t-l}}_{\text{AR part}} +
 $$
 
 
-## Gradients
+## Gradient (Score Function)
 
-Gradient w.r.t. $\beta_l$:
+Define the following: 
 
+* $a_t = \sum_{l=q}^q \beta_ty_{t-l}$
+* $c_t = \exp(x_t^T\gamma)$
+* $w = 1 - \sum\beta_t$
+* $m_t = a_t + w \cdot c_t$
+
+Then, the derivative of the log-likelihood with respect to $\gamma_j$ is:
 $$
-\frac{\partial m_t}{\partial \beta_l} = y_{t-l} - \exp(\mu + \mathbf{x}_t^\top \boldsymbol{\gamma})
-$$
-
-Gradient w.r.t. $\gamma_j$:
-
-$$
-\frac{\partial m_t}{\partial \gamma_j} = (1 - \sum \beta_l) \cdot x_{t,j} \cdot \exp(\mu + \mathbf{x}_t^\top \boldsymbol{\gamma})
-$$
-
-Now plug into:
-
-$$
-\frac{\partial \log \mathcal{L}}{\partial \theta} = \sum_{t=q+1}^T \left( \frac{y_t}{m_t} - 1 \right) \cdot \frac{\partial m_t}{\partial \theta}
+\frac{\partial{\log\mathcal{L}}}{\partial\gamma_j} = \sum_{t = q+ l}^T \left[ \frac{y_t}{m_t} - 1\right] \cdot w \cdot c_t \cdot x_{tj}
 $$
 
+And the derivative of the log-likelihood with respect to $\beta_k$ is: 
+$$
+\frac{\partial{\log\mathcal{L}}}{\partial\beta_k} = \sum_{t = q+ l}^T \left[ \frac{y_t}{m_t} - 1\right] \left[ y_{t-k} - c_t\right]
+$$
 
 # Estimation Methods
 
 ## EM Algorithm
-* E-step: Compute expected values of latent variables (e.g., item intercepts $\eta_i$)
-* M-step: Maximize the expected log-likelihood with respect to model parameters
+* E-step: Applicable if we add new random intercepts (either item or brand level)
+* M-step: Maximize the expected log-likelihood with respect to model parameters $\gamma$, $\beta$, and $\tau$
 
 ## Newton-Raphson
 * Use gradients and Hessians of the log-likelihood to iteratively update parameters
 
 ## Bayesian Inference (MCMC)
-* Fit the full hierarchical model in Stan
-* Use priors on all parameters, including hierarchical priors:
+* Fit the independent Poisson Autoregression (PAR) model for each item with MCMC (currently implemented in STAN)
+* Place priors directly on model parameters
 
-* $\tau$: mixing weight for AR component
+* $\tau$: mixing weight for AR component, $\beta = \tau \tilde{\boldsymbol{\beta}}$
 
 Priors:
 
 * $\boldsymbol{\gamma} \sim \mathcal{N}(\boldsymbol{\mu}, \Sigma_\gamma)$
 * $\Sigma_\gamma \sim \text{Inv-Wishart}(\nu, \Psi)$ — (approximated as fixed in Stan)
-* $\tilde{\boldsymbol{\beta}} \sim \text{Dirichlet}(\alpha)$, $\beta = \tau \tilde{\boldsymbol{\beta}}$
+* $\tilde{\boldsymbol{\beta}} \sim \text{Dirichlet}(\alpha)$
 * $\tau \sim \text{Beta}(a, b)$
 
 # Model Evaluation and Predictive Performance
