@@ -12,39 +12,26 @@ library(ggplot2)
 ```
 
 $$
-y_{it} \sim \text{Poisson}(m_{it})
+y_{it} \sim \text{Poisson}(m_{t})
 $$
 $$
-m_{it} = \sum_{l=1}^{q} \beta_{i,l} y_{i,t-l} +
-\left(1 - \sum_{l=1}^{q} \beta_{i,l} \right) \cdot
-\exp\left( \mu + \mu_{g_i} + \eta_i + f_t + \mathbf{x}_{it}^\top \gamma_i \right)
+m_t = \sum_{l=1}^{q} \beta_{l} y_{t-l} +
+\left(1 - \sum_{l=1}^{q} \beta_{l} \right) \cdot \exp(\mathbf{x}_t^\top \boldsymbol{\gamma})
 $$
 Where:
 
-* $\beta_{i,l}$: item-specific AR coefficients (constrained so sum $\leq$ 1)
-* $\mu$: global intercept
-* $\mu_{g_i}$: brand-specific intercept for item i
-* $\eta_i$: item-specific intercept
-* $f_t$: shared time effect across all items
-* $\gamma_i$: item-specific covariate effects
-	
-Model Hierarchy
+* $\beta_{l}$: AR coefficients (constrained so sum $\leq$ 1)
+* $\gamma$: covariate effect vector
+* $\tau$: mixing weight for AR component
 
-Brand-Level
+Priors:
 
-* $\mu_{g} \sim N(0, 1)$ — brand intercepts
-* $\mu_g$: brand-specific prior means for covariate effects
-* $\gamma_i \sim N(\mu_{g_i}, \sigma_g^2 \mathbf{I})$
+* $\boldsymbol{\gamma} \sim \mathcal{N}(\boldsymbol{\mu}, \Sigma_\gamma)$
+* $\Sigma_\gamma \sim \text{Inv-Wishart}(\nu, \Psi)$ — (approximated as fixed in Stan)
+* $\tilde{\boldsymbol{\beta}} \sim \text{Dirichlet}(\alpha)$, $\beta = \tau \tilde{\boldsymbol{\beta}}$
+* $\tau \sim \text{Beta}(a, b)$
 
-Item-Level
-
-* $\eta_i \sim N(0, \sigma_\eta^2)$ — item intercept
-* $\beta_{i,\cdot} \sim \text{Dirichlet}(\cdot)$, scaled by $\tau_i \sim \text{Beta}(a, b)$
-
-Time-Level
-
-* $f_t \sim \mathcal{N}(0, 1)$ — shared time effect
-
+We fit this model **independently for each item**.  
 
 # Simulation Parameters
 ```{r}
@@ -57,57 +44,85 @@ true_f <- attr(sim_data, "true_params")$f
 ```
 
 # Prepare Stan Data and Fit
+# Prepare Stan Data and Fit (One Item Example)
 ```{r}
-stan_input <- prepare_data_stan_vectorpar(sim_data, q = 1)
-fit <- fit_vector_par_stan(stan_input)
+item1 <- sim_data %>% filter(item_id == 1)
+fit <- fit_par_item(item1, q = 1)
 ```
 
 # Posterior Summaries
 ```{r}
-summary_eta <- fit$summary(variables = paste0("eta[", 1:12, "]"))
-summary_mu <- fit$summary(variables = paste0("mu_brand[", 1:3, "]"))
-summary_f <- fit$summary(variables = paste0("f[", 1:length(true_f), "]"))
+summary_gamma <- fit$summary(variables = paste0("gamma[", 1, "]"))
+summary_tau <- fit$summary(variables = "tau")
+summary_beta <- fit$summary(variables = paste0("beta[", 1, "]"))
 ```
 
-# True vs Estimated: Combined Plot
+# True vs Estimated (Example)
 ```{r}
-df_mu <- tibble(
-  type = "Brand Intercept",
-  index = seq_along(true_mu_brand),
-  true = true_mu_brand,
-  estimate = summary_mu$mean,
-  lower = summary_mu$q5,
-  upper = summary_mu$q95
+true_gamma1 <- attr(sim_data, "true_params")$gamma[[1]][1]
+
+tibble(
+  parameter = c("gamma[1]", "tau", "beta[1]"),
+  estimate = c(summary_gamma$mean, summary_tau$mean, summary_beta$mean),
+  lower = c(summary_gamma$q5, summary_tau$q5, summary_beta$q5),
+  upper = c(summary_gamma$q95, summary_tau$q95, summary_beta$q95),
+  true = c(true_gamma1, NA, NA)
 )
+```
 
-df_eta <- tibble(
-  type = "Item Intercept",
-  index = seq_along(true_eta),
-  true = true_eta,
-  estimate = summary_eta$mean,
-  lower = summary_eta$q5,
-  upper = summary_eta$q95
-)
+# Full loop for independent item fitting
+```{r}
+# Get item-level data splits
+item_list <- split(sim_data, sim_data$item_id)
 
-df_f <- tibble(
-  type = "Time Effect",
-  index = seq_along(true_f),
-  true = true_f,
-  estimate = summary_f$mean,
-  lower = summary_f$q5,
-  upper = summary_f$q95
-)
+# Loop and fit each item independently
+fits <- purrr::map(item_list, ~ fit_par_item(.x, q = 1))
+names(fits) <- paste0("item_", names(item_list))
 
-# Combine and plot
-df_all <- bind_rows(df_mu, df_eta, df_f)
+# Helper to pull posterior mean of gamma[1], tau, and beta[1] for each item
+extract_summary <- function(fit) {
+  gamma_mean <- fit$summary(variables = "gamma[1]")$mean
+  tau_mean <- fit$summary(variables = "tau")$mean
+  beta_mean <- fit$summary(variables = "beta[1]")$mean
+  tibble(gamma = gamma_mean, tau = tau_mean, beta = beta_mean)
+}
 
-ggplot(df_all, aes(x = true, y = estimate)) +
+summary_df <- purrr::map_dfr(fits, extract_summary, .id = "item_id")
+summary_df$item_id <- as.integer(gsub("item_", "", summary_df$item_id))
+
+# Add true gamma for comparison
+true_gammas <- purrr::map_dbl(attr(sim_data, "true_params")$gamma, 1)
+summary_df$true_gamma <- true_gammas[summary_df$item_id]
+
+summary_df
+
+ggplot(summary_df, aes(x = true_gamma, y = gamma)) +
   geom_point() +
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.05, alpha = 0.5) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
-  facet_wrap(~type, scales = "free") +
-  labs(title = "True vs Estimated Parameters", x = "True Value", y = "Posterior Mean ± 90% CI") +
+  labs(title = "Posterior Mean of γ vs True γ (per item)", x = "True γ", y = "Estimated γ") +
   theme_minimal()
 ```
+
+
+
+```{r}
+
+brands <- c("B1", "B2", "B3", "B4")
+brand_data <- lapply(brands, function(b) filter(data_set_tidy, brand == b))
+names(brand_data) <- brands
+
+# brand_fits <- lapply(brand_data, function(df) {
+#   item_list <- split(df, df$item)
+#   item_list <- split(df, df$item)
+# 
+#   # Ensure correct column names for fitting
+#   item_list <- purrr::map(item_list, ~ .x %>%
+#     rename(y = QTY) %>%
+#     mutate(time = row_number()))  # ensure time column exists
+#   map(item_list, ~ fit_par_item(.x, q = 1))
+# })
+
+```
+
 
 

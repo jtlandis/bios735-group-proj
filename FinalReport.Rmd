@@ -47,22 +47,18 @@ Here, $g_i$ denotes the brand (group) to which item $i$ belongs.
 We define the model as:
 
 $$
-y_{it} \mid m_{it} \sim \text{Poisson}(m_{it})
+y_{t} \sim \text{Poisson}(m_{t})
 $$
 
 $$
-m_{it} = \sum_{l=1}^q \beta_{i,l} y_{i,t-l} + 
-\left(1 - \sum_{l=1}^q \beta_{i,l} \right)
-\exp\left( \mu_{g_i} + \eta_i + \mathbf{x}_{it}^\top \boldsymbol{\gamma}_i + f_t \right)
+m_t = \sum_{l=1}^{q} \beta_{l} y_{t-l} +
+\left(1 - \sum_{l=1}^{q} \beta_{l} \right) \cdot \exp(\mathbf{x}_t^\top \boldsymbol{\gamma})
 $$
 
-**Model components:**
+Where:
 
-* $\beta_{i,l}$: autoregressive coefficients for item $i$
-* $\mu_{g_i}$: brand-level intercept
-* $\eta_i$: item-specific deviation
-* $\boldsymbol{\gamma}_i$: covariate effects (e.g., promotion)
-* $f_t$: global time-specific effect (e.g., seasonality)	
+* $\beta_{l}$: AR coefficients (constrained so sum $\leq$ 1)
+* $\gamma$: covariate effect vector
 
 ## Likelihood Function
 
@@ -70,35 +66,28 @@ Let $\boldsymbol{\theta}$ denote the full set of model parameters. The full like
 
 $$
 \mathcal{L}(\boldsymbol{\theta}) =
-\prod_{i=1}^n \prod_{t=q+1}^T
-\frac{m_{it}^{y_{it}} e^{-m_{it}}}{y_{it}!}
+\prod_{t=q+1}^T
+\frac{m_{t}^{y_{t}} e^{-m_{t}}}{y_{t}!}
 $$
 
 The corresponding log-likelihood, used for optimization and posterior inference, is:
 
 $$
 \log \mathcal{L}(\boldsymbol{\theta}) =
-\sum_{i=1}^n \sum_{t=q+1}^T \left[
-y_{it} \log(m_{it}) - m_{it} - \log(y_{it}!)
+\sum_{t=q+1}^T \left[
+y_{t} \log(m_{t}) - m_{t} - \log(y_{t}!)
 \right]
 $$
-
-Let $\boldsymbol{\theta}$ denote the full set of model parameters. The complete-data likelihood is:
-
-$$
-\mathcal{L}(\boldsymbol{\theta}) =
-\prod_{i=1}^n \prod_{t=q+1}^T
-\frac{m_{it}^{y_{it}} e^{-m_{it}}}{y_{it}!}
-$$
-
-The log-likelihood is:
+Where, 
 
 $$
-\log \mathcal{L}(\boldsymbol{\theta}) =
-\sum_{i=1}^n \sum_{t=q+1}^T \left[
-y_{it} \log(m_{it}) - m_{it} - \log(y_{it}!)
-\right]
+
+m_t = \underbrace{\sum_{l=1}^{q} \beta_l y_{t-l}}_{\text{AR part}} +
+\underbrace{\left(1 - \sum{l=1}^{q} \beta_l \right)}_{\text{mixing weight}} \cdot
+\underbrace{\exp(\mathbf{x}t^\top \boldsymbol{\gamma})}_{\text{covariate part}}
+
 $$
+
 
 ## Gradients
 
@@ -134,11 +123,14 @@ $$
 * Fit the full hierarchical model in Stan
 * Use priors on all parameters, including hierarchical priors:
 
-$$
-\boldsymbol{\gamma}i \sim \mathcal{N}(\boldsymbol{\mu}{g_i}, \rho_{g_i} \mathbf{I}), \quad
-\mu_{g_i} \sim \mathcal{N}(0, \sigma_\mu^2), \quad
-\eta_i \sim \mathcal{N}(0, \sigma_\eta^2)
-$$
+* $\tau$: mixing weight for AR component
+
+Priors:
+
+* $\boldsymbol{\gamma} \sim \mathcal{N}(\boldsymbol{\mu}, \Sigma_\gamma)$
+* $\Sigma_\gamma \sim \text{Inv-Wishart}(\nu, \Psi)$ — (approximated as fixed in Stan)
+* $\tilde{\boldsymbol{\beta}} \sim \text{Dirichlet}(\alpha)$, $\beta = \tau \tilde{\boldsymbol{\beta}}$
+* $\tau \sim \text{Beta}(a, b)$
 
 # Model Evaluation and Predictive Performance
 
