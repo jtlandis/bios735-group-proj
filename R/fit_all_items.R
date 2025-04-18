@@ -24,3 +24,58 @@ fit_all_items <- function(item_list, q = 1) {
     })
   }) %>% purrr::compact()
 }
+
+#' Summarize PAR Fit Results Across Items
+#'
+#' Extracts beta, gamma, loglik, and convergence status from a list of fitted models.
+#'
+#' @param fits List of model fits (output from `fit_all_items()`)
+#'
+#' @return A tibble with one row per item
+#' @export
+summarize_par_fits <- function(fits) {
+  purrr::map_dfr(seq_along(fits), function(i) {
+    fit <- fits[[i]]
+    tibble(
+      item_id = i,
+      loglik = fit$loglik,
+      converged = fit$converged,
+      beta = list(fit$beta),
+      gamma = list(fit$gamma)
+    )
+  }) %>%
+    unnest_wider(beta, names_sep = "_b") %>%
+    unnest_wider(gamma, names_sep = "_g")
+}
+
+#' Fit the Vector PAR model in Stan
+#'
+#' @param stan_data A list from prepare_data_stan_vectorpar()
+#' @param stan_file Path to the Stan file
+#' @param iter Number of iterations
+#' @param chains Number of chains
+#' @param seed Random seed
+#'
+#' @return A cmdstanr fit object
+#' @export
+fit_vector_par_stan <- function(stan_data,
+                                stan_file = "inst/stan/vector_par.stan",
+                                iter = 1000,
+                                chains = 4,
+                                seed = 123) {
+  if (!requireNamespace("cmdstanr", quietly = TRUE)) {
+    stop("cmdstanr is required. Install it with: install.packages('cmdstanr')")
+  }
+  
+  mod <- cmdstanr::cmdstan_model(stan_file)
+  fit <- mod$sample(
+    data = stan_data,
+    iter_sampling = iter,
+    iter_warmup = iter,
+    chains = chains,
+    seed = seed,
+    refresh = 500
+  )
+  
+  return(fit)
+}
