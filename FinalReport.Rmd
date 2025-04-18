@@ -1,47 +1,152 @@
 ---
-title: "BIOS 735 Report"
-author: 'Group 3: Abby Foes, Zheng Lan, Justin Landis, Yu Liu, Alec Reinhardt'
-date: "`r Sys.Date()`"
-output: html_document
+title: "Modeling Promotional Pasta Sales with Hierarchical Poisson Autoregression"
+author: "Group 2"
+output: 
+  pdf_document: 
+    toc: true
+    number_sections: true
+  html_document: 
+    toc: true
+    number_sections: true
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+#library(pastasales) 
+```
+
 # Introduction
+We analyze pasta sales data from an Italian grocery store, consisting of 116 items across four brands, observed daily from 2014 to 2018. Our goal is to model item-level sales with dependence on past observations, promotional status, and latent brand effects.
 
-We identified a dataset for pasta sales from an Italian grocery store from January 2014 to December 2018. This datasets includes 116 time series, each with 1,798 time points, including the quantity of sales for specific pasta items and whether they were on promotion at the time. The time series are hierarchical, with four brands and 45 unique items per brand. Based on preliminary data analysis, there is evidence of common temporal patterns in item sales within each brand as well as a relationship between promotion and sales. 
+We compare likelihood-based models (EM, Newton-Raphson), Bayesian inference (MCMC), and machine learning benchmarks (Random Forests, Hidden Markov Models), using predictive accuracy as the main evaluation metric.
 
-## Research Questions
-(1) Can we improve forecasting accuracy by accounting for the hierarchical structure in the data compared with modeling each brand and item independently? What about models that account for sparsity (for those items with many days of no sales) or periodicity?
+## Background
 
-(2) How do temporal trends and the promotion-sales relationship vary across pasts brands? Which points in time show the largest deviations? Is there evidence of periodic (seasonal) trends, and how do these relate across brands and items?
+## Goals
 
-# Methods
+# Data Description
+```{r data-summary}
+data("data_set_tidy")
+glimpse(data_set_tidy)
+```
+Each row corresponds to daily sales for a specific item, along with brand and promotion indicators.
 
-## Models
+# Model Derivation
 
-To develop a forecasting model, we will adapt various classical approaches for time series modeling. For instance, the autoregressive model (AR) (see, e.g. Box et al. (2015)) assumes that the current outcome depends linearly on the previously observed outcomes (up to a certain lag $q$), covariates, and a noise term. This can be expressed as 
+## Extended Poisson Autoregressive Model
 
-$$y_t = \alpha_0+\sum_{l=1}^q \beta_l y_{t-l} + \gamma x_{t} + \epsilon_{t}$$
+Let the sales outcome for item $i$ at time $t$ be denoted by $y_{it}$, where:
 
+$$
+i \in \{1,\ldots,n\}, \quad t \in \{1,\ldots,T\}, \quad g_i \in \{1,\ldots,B\}
+$$
 
-where $y_t$ is the outcome at time point $t$, $\alpha_0$ is the population intercept, the $\beta_l$ terms capture the dependence between $y_t$ and previous time points, $\gamma$ captures the effect of (time-varying) covariate $x_t$ on $y_t$, and $\epsilon_t$ is the noise term, assumed to be mean zero Gaussian. As a first step, we plan to fit these models for each brand and item independently. The R package `astsa` utilizes model fitting methods such as Burg's Algorithm and Yule-Walker equations. However, we plan to also implement a MLE-based approach. Chapter 2 of the book (Funatogawa et al. (2018)) details the likelihood and steps for MLE for AR models.
+Here, $g_i$ denotes the brand (group) to which item $i$ belongs.
 
+We define the model as:
 
-In order to capture shared patterns among items within each brand, we propose a mixed effects AR model (see Nicholls and Quinn (2012) for example) of the form
+$$
+y_{it} \mid m_{it} \sim \text{Poisson}(m_{it})
+$$
 
-$$ y_{hi,t} = (\alpha_0+a_h)+\sum_{l=1}^q (\beta_l+b_{h,l}) y_{hi,t-l} + (\gamma+g_h) x_{hi,t} + \epsilon_{t}$$
+$$
+m_{it} = \sum_{l=1}^q \beta_{i,l} y_{i,t-l} + 
+\left(1 - \sum_{l=1}^q \beta_{i,l} \right)
+\exp\left( \mu_{g_i} + \eta_i + \mathbf{x}_{it}^\top \boldsymbol{\gamma}_i + f_t \right)
+$$
 
-$$ \alpha_h \sim N(0,\sigma_{\alpha}^2), \ b_{h,l} \sim N(0,\sigma_{\beta}^2), \ g_h \sim N(0,\sigma_{\gamma}^2), \ \epsilon_t \sim N(0,\sigma_{\epsilon}^2)$$
+**Model components:**
+- $\beta_{i,l}$: autoregressive coefficients for item $i$
+- $\mu_{g_i}$: brand-level intercept
+- $\eta_i$: item-specific deviation
+- $\boldsymbol{\gamma}_i$: covariate effects (e.g., promotion)
+- $f_t$: global time-specific effect (e.g., seasonality)	
 
-where we introduce random intercept $a_h$, and random slopes $b_{h,l}$ and $g_h$ for the effects of previous timepoints and covariates, respectively. We assume that each term comes from a common distribution specific to each brand, in effect pooling information across items within each brand while still allowing for deviations. We will also consider simplifications and possible extensions of the above model, including modeling cross-brand dependencies. For model fitting, we will consider a Bayesian variation of the above models, with suitable priors for model coefficients and residual noise. We will implement a Markov Chain Monte Carlo (MCMC) algorithm to sample the posterior of model parameters, which in turn allows for both prediction and uncertainty quantification (e.g. credible intervals).
+## Likelihood Function
 
-### Moving Average Model
+Let $\boldsymbol{\theta}$ denote the full set of model parameters. The full likelihood across all items and times is:
 
-$$Y_{i,t} = \alpha + \epsilon_{i,t} +\sum_{j=1}^q\theta_i\epsilon_{i,t-j}$$
+$$
+\mathcal{L}(\boldsymbol{\theta}) =
+\prod_{i=1}^n \prod_{t=q+1}^T
+\frac{m_{it}^{y_{it}} e^{-m_{it}}}{y_{it}!}
+$$
 
+The corresponding log-likelihood, used for optimization and posterior inference, is:
 
-### ARMA Model
+$$
+\log \mathcal{L}(\boldsymbol{\theta}) =
+\sum_{i=1}^n \sum_{t=q+1}^T \left[
+y_{it} \log(m_{it}) - m_{it} - \log(y_{it}!)
+\right]
+$$
 
+Let $\boldsymbol{\theta}$ denote the full set of model parameters. The complete-data likelihood is:
 
-$$y_t = \alpha + \beta_1 y_{t-1}+\ldots +\beta_p y_{t-p} + \epsilon_t + \epsilon_{t-1} \theta_{q} + \ldots + \epsilon_{t-q} \theta_{q}$$
+$$
+\mathcal{L}(\boldsymbol{\theta}) =
+\prod_{i=1}^n \prod_{t=q+1}^T
+\frac{m_{it}^{y_{it}} e^{-m_{it}}}{y_{it}!}
+$$
 
+The log-likelihood is:
 
+$$
+\log \mathcal{L}(\boldsymbol{\theta}) =
+\sum_{i=1}^n \sum_{t=q+1}^T \left[
+y_{it} \log(m_{it}) - m_{it} - \log(y_{it}!)
+\right]
+$$
+
+# Estimation Methods
+
+## EM Algorithm
+	•	E-step: Compute expected values of latent variables (e.g., item intercepts $\eta_i$)
+	•	M-step: Maximize the expected log-likelihood with respect to model parameters
+
+## Newton-Raphson
+	•	Use gradients and Hessians of the log-likelihood to iteratively update parameters
+
+## Bayesian Inference (MCMC)
+	•	Fit the full hierarchical model in Stan
+	•	Use priors on all parameters, including hierarchical priors:
+
+$$
+\boldsymbol{\gamma}i \sim \mathcal{N}(\boldsymbol{\mu}{g_i}, \rho_{g_i} \mathbf{I}), \quad
+\mu_{g_i} \sim \mathcal{N}(0, \sigma_\mu^2), \quad
+\eta_i \sim \mathcal{N}(0, \sigma_\eta^2)
+$$
+
+# Model Evaluation and Predictive Performance
+
+We evaluate models using holdout-based prediction: the final 10–20% of each item’s time series is reserved for testing.
+
+```{r eval-metrics}
+# Example: results <- evaluate_holdout(...)
+# knitr::kable(results)
+```
+
+** Evaluation Metrics **
+ - Root Mean Squared Error (RMSE)
+ - Mean Absolute Error (MAE)
+ - Log Predictive Density (for Bayesian models)
+ - Posterior predictive interval coverage (for MCMC)
+
+# Machine Learning Benchmarks
+
+## Random Forest
+```{r rf-model}
+# rf_fit <- fit_random_forest(...)
+```
+
+## Hidden Markov Model
+```{r hmm-model}
+# hmm_fit <- fit_hmm(...)
+```
+
+# Summary and Discussion
+ - Which methods give the most accurate predictions for sparse, autocorrelated data?
+ - What is the trade-off between hierarchical shrinkage and item-specific flexibility?
+ - Are machine learning models (e.g., random forests) better suited for forecasting than structured generative models?
+ 
