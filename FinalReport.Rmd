@@ -100,6 +100,27 @@ y_{it} \log(m_{it}) - m_{it} - \log(y_{it}!)
 \right]
 $$
 
+## Gradients
+
+Gradient w.r.t. $\beta_l$:
+
+$$
+\frac{\partial m_t}{\partial \beta_l} = y_{t-l} - \exp(\mu + \mathbf{x}_t^\top \boldsymbol{\gamma})
+$$
+
+Gradient w.r.t. $\gamma_j$:
+
+$$
+\frac{\partial m_t}{\partial \gamma_j} = (1 - \sum \beta_l) \cdot x_{t,j} \cdot \exp(\mu + \mathbf{x}_t^\top \boldsymbol{\gamma})
+$$
+
+Now plug into:
+
+$$
+\frac{\partial \log \mathcal{L}}{\partial \theta} = \sum_{t=q+1}^T \left( \frac{y_t}{m_t} - 1 \right) \cdot \frac{\partial m_t}{\partial \theta}
+$$
+
+
 # Estimation Methods
 
 ## EM Algorithm
