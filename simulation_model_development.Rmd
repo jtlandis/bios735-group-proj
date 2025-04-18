@@ -20,7 +20,8 @@ m_{it} = \sum_{l=1}^{q} \beta_{i,l} y_{i,t-l} +
 \exp\left( \mu + \mu_{g_i} + \eta_i + f_t + \mathbf{x}_{it}^\top \gamma_i \right)
 $$
 Where:
-* $\beta_{i,l}$: item-specific AR coefficients (constrained so sum $\leq  $ 1)
+
+* $\beta_{i,l}$: item-specific AR coefficients (constrained so sum $\leq$ 1)
 * $\mu$: global intercept
 * $\mu_{g_i}$: brand-specific intercept for item i
 * $\eta_i$: item-specific intercept
@@ -30,15 +31,18 @@ Where:
 Model Hierarchy
 
 Brand-Level
-* $\mu_{g} \sim \mathcal{N}(0, 1)$ — brand intercepts
+
+* $\mu_{g} \sim N(0, 1)$ — brand intercepts
 * $\mu_g$: brand-specific prior means for covariate effects
-* $\gamma_i \sim \mathcal{N}(\mu_{g_i}, \sigma_g^2 \mathbf{I})$
+* $\gamma_i \sim N(\mu_{g_i}, \sigma_g^2 \mathbf{I})$
 
 Item-Level
-* $\eta_i \sim \mathcal{N}(0, \sigma_\eta^2)$ — item intercept
+
+* $\eta_i \sim N(0, \sigma_\eta^2)$ — item intercept
 * $\beta_{i,\cdot} \sim \text{Dirichlet}(\cdot)$, scaled by $\tau_i \sim \text{Beta}(a, b)$
 
 Time-Level
+
 * $f_t \sim \mathcal{N}(0, 1)$ — shared time effect
 
 
