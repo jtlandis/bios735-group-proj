@@ -57,11 +57,12 @@ m_{it} = \sum_{l=1}^q \beta_{i,l} y_{i,t-l} +
 $$
 
 **Model components:**
-- $\beta_{i,l}$: autoregressive coefficients for item $i$
-- $\mu_{g_i}$: brand-level intercept
-- $\eta_i$: item-specific deviation
-- $\boldsymbol{\gamma}_i$: covariate effects (e.g., promotion)
-- $f_t$: global time-specific effect (e.g., seasonality)	
+
+* $\beta_{i,l}$: autoregressive coefficients for item $i$
+* $\mu_{g_i}$: brand-level intercept
+* $\eta_i$: item-specific deviation
+* $\boldsymbol{\gamma}_i$: covariate effects (e.g., promotion)
+* $f_t$: global time-specific effect (e.g., seasonality)	
 
 ## Likelihood Function
 
@@ -102,15 +103,15 @@ $$
 # Estimation Methods
 
 ## EM Algorithm
-	•	E-step: Compute expected values of latent variables (e.g., item intercepts $\eta_i$)
-	•	M-step: Maximize the expected log-likelihood with respect to model parameters
+* E-step: Compute expected values of latent variables (e.g., item intercepts $\eta_i$)
+* M-step: Maximize the expected log-likelihood with respect to model parameters
 
 ## Newton-Raphson
-	•	Use gradients and Hessians of the log-likelihood to iteratively update parameters
+* Use gradients and Hessians of the log-likelihood to iteratively update parameters
 
 ## Bayesian Inference (MCMC)
-	•	Fit the full hierarchical model in Stan
-	•	Use priors on all parameters, including hierarchical priors:
+* Fit the full hierarchical model in Stan
+* Use priors on all parameters, including hierarchical priors:
 
 $$
 \boldsymbol{\gamma}i \sim \mathcal{N}(\boldsymbol{\mu}{g_i}, \rho_{g_i} \mathbf{I}), \quad
