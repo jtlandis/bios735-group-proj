@@ -16,8 +16,12 @@ Imports:
     cmdstanr,
     dplyr,
     magrittr,
+    optimx,
     purrr,
+    rlang,
     tibble,
     tidyr
 Remotes:
     stan-dev/cmdstanr
+Suggests: 
+    mvtnorm
