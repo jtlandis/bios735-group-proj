@@ -25,8 +25,8 @@ prepare_data_stan_vectorpar <- function(data, q = 1) {
 
   # Drop rows with NA lags
   data <- data %>%
-    filter(if_all(starts_with("lag"), ~ !is.na(.)))
-  
+    dplyr::filter(if_all(starts_with("lag"), ~!is.na(.)))
+
   N <- nrow(data)
   I <- length(item_ids)
   B <- length(brand_ids)

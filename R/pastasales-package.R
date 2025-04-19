@@ -2,6 +2,15 @@
 "_PACKAGE"
 
 ## usethis namespace: start
+#' @importFrom dplyr arrange
+#' @importFrom dplyr distinct
+#' @importFrom dplyr group_by
+#' @importFrom dplyr if_all
+#' @importFrom dplyr mutate
+#' @importFrom dplyr pull
+#' @importFrom dplyr select
+#' @importFrom dplyr starts_with
+#' @importFrom dplyr ungroup
 #' @importFrom magrittr %>%
 ## usethis namespace: end
 NULL
