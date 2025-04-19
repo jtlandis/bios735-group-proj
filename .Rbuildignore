@@ -1,2 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^LICENSE\.md$
+^FinalReport*
+MCMC
+data-raw
+^simulation_model_development*
