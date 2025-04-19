@@ -6,12 +6,12 @@
 #' @return Matrix of beta values.
 #' @examples
 #' beta_mat(betas = c(.5, 1.5), t = 5, q = 2)
-beta_mat <- function(betas, t, q) {
+beta_mat <- function(betas, t) {
+  q <- length(betas)
   stopifnot(
     rlang::is_integerish(t),
     rlang::is_integerish(q),
     is.numeric(betas),
-    length(betas) == q,
     t > 0,
     q < t
   )
