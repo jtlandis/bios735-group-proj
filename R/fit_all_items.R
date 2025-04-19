@@ -36,7 +36,7 @@ fit_all_items <- function(item_list, q = 1) {
 summarize_par_fits <- function(fits) {
   purrr::map_dfr(seq_along(fits), function(i) {
     fit <- fits[[i]]
-    tibble::tibble(
+    tibble(
       item_id = i,
       loglik = fit$loglik,
       converged = fit$converged,

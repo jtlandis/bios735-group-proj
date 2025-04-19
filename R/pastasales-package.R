@@ -12,5 +12,6 @@
 #' @importFrom dplyr starts_with
 #' @importFrom dplyr ungroup
 #' @importFrom magrittr %>%
+#' @importFrom tibble tibble
 ## usethis namespace: end
 NULL

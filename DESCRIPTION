@@ -17,6 +17,7 @@ Imports:
     dplyr,
     magrittr,
     purrr,
+    tibble,
     tidyr
 Remotes:
     stan-dev/cmdstanr
