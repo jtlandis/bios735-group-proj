@@ -1,4 +1,4 @@
-#' log(\lambda_{it}) = \alpha + \sum_{l=1}^q \beta_l y_{i,t-1} + \gamma \x_{it}
+# log(\lambda_{it}) = \alpha + \sum_{l=1}^q \beta_l y_{i,t-1} + \gamma \x_{it}
 
 sample_pois <- function(x, alpha, betas, gamma) {
   n <- ncol(x)
