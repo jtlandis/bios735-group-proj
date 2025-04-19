@@ -11,6 +11,6 @@ An object of class \code{spec_tbl_df} (inherits from \code{tbl_df}, \code{tbl}, 
 data_set_raw
 }
 \description{
-Data as provided by \link{https://archive.ics.uci.edu/dataset/611/hierarchical+sales+data}
+Data as provided by \url{https://archive.ics.uci.edu/dataset/611/hierarchical+sales+data}
 }
 \keyword{datasets}

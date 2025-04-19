@@ -41,7 +41,6 @@ beta_mat <- function(betas, t) {
 #' x <- rep(c(0, 0, 0, 0, 1, 1, 1, 1, 0, 0), 10)
 #' A <- diag(t) - beta_mat(betas, t)
 #' A_inv <- solve(A)
-#' A_inv
 #' sigma2 <- 1
 #' V <- sigma2 * (A_inv %*% t(A_inv))
 #' mu <- A_inv %*% (alpha + (gamma * x))
@@ -49,10 +48,7 @@ beta_mat <- function(betas, t) {
 #' y <- mvtnorm::rmvnorm(n = 1, mean = mu, sigma = V)
 #'
 #' ## log-likelihood on values sampled from our given parameters
-#' ll(as.vector(y), x, alpha, betas, gamma, sigma2)
-#' ## log-likelihood on dummy values (more negative)
-#' ll(1:10, x, alpha, betas, gamma, sigma2)
-#' ll(rep(1, 10), x, alpha, betas, gamma, sigma2)
+#' ll(t(y), matrix(x, ncol = 1), alpha, betas, gamma, sigma2)
 #' @export
 ll <- function(
   y,
