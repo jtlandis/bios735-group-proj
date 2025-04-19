@@ -6,7 +6,11 @@
 #' @param alpha a scalar coefficient for the intercept term
 #' @param betas a vector of coefficients for the autoregressive terms
 #' @param gamma a scalar coefficient for the promotion
-#' @return an estiamte for the respective Parameter
+#' @param index the index of the betas to maximize
+#' @param sigma2 a scalar coefficient for the variance
+#' @param times The number of times to run the optimization algorithm
+#' @param trace_mod A number indicating the modulus to report the progress of the optimization algorithm
+#' @return an estimate for the respective Parameter
 NULL
 
 #' @rdname mle_nar_model
@@ -23,7 +27,7 @@ mle_alpha <- function(y, x, betas, gamma) {
 #' @rdname mle_nar_model
 mle_gamma <- function(y, x, betas, alpha) {
   t <- nrow(y)
-  B <- beta_mat(betas, t, q = length(betas))
+  B <- beta_mat(betas, t)
   A <- diag(t) - B
   Ay <- A %*% y
   sum(Ay * x - (alpha * x)) / sum(x * x)
@@ -191,7 +195,7 @@ mle_params <- function(y, x, alpha, betas, gamma, sigma2) {
 #' alpha <- 3
 #' t <- 100
 #' x <- rep(c(0, 0, 0, 0, 1, 1, 1, 1, 0, 0), 10)
-#' A <- diag(t) - beta_mat(betas, t, q = length(betas))
+#' A <- diag(t) - beta_mat(betas, t)
 #' A_inv <- solve(A)
 #' A_inv
 #' sigma2 <- 1

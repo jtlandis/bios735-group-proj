@@ -2,7 +2,6 @@
 #' @description Creates a matrix of beta values for a given number of time points (t) and lag values (q).
 #' @param betas Numeric vector of beta values.
 #' @param t Integer number of time points.
-#' @param q Integer number of lag groups.
 #' @return Matrix of beta values.
 #' @export
 beta_mat <- function(betas, t) {
@@ -40,7 +39,7 @@ beta_mat <- function(betas, t) {
 #' alpha <- 3
 #' t <- 100
 #' x <- rep(c(0, 0, 0, 0, 1, 1, 1, 1, 0, 0), 10)
-#' A <- diag(t) - beta_mat(betas, t, q = length(betas))
+#' A <- diag(t) - beta_mat(betas, t)
 #' A_inv <- solve(A)
 #' A_inv
 #' sigma2 <- 1
@@ -61,13 +60,13 @@ ll <- function(
   alpha,
   betas,
   gamma,
-  sigma2,
-  n = ncol(y) %||% 1
+  sigma2
 ) {
   if (is.vector(y)) {
     y <- matrix(y, ncol = 1, nrow = length(y))
     x <- matrix(x, ncol = 1, nrow = length(x))
   }
+  n <- ncol(y) %||% 1
   t <- nrow(y)
   B <- beta_mat(betas, t)
   A <- diag(t) - B
