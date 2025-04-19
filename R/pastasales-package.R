@@ -1,7 +1,19 @@
+#' BIOS735 Group Project (group 2)
+#'
+#' @description This package contains functions for analyzing pasta sales data. Included are a few rstan models for comparison.
+#'
+#' @references
+#' Stan Development Team (NA). RStan: the R interface to Stan. R package version 2.32.3. https://mc-stan.org
 #' @keywords internal
 "_PACKAGE"
 
 ## usethis namespace: start
+#' @useDynLib pastasales, .registration = TRUE
+#' @import methods
+#' @import Rcpp
+#' @importFrom rstantools rstan_config
+#' @importFrom rstan sampling
+#' @importFrom RcppParallel RcppParallelLibs
 #' @importFrom dplyr across
 #' @importFrom dplyr all_of
 #' @importFrom dplyr arrange

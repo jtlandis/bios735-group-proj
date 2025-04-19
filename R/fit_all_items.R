@@ -58,15 +58,17 @@ summarize_par_fits <- function(fits) {
 #'
 #' @return A cmdstanr fit object
 #' @export
-fit_vector_par_stan <- function(stan_data,
-                                stan_file = "inst/stan/vector_par.stan",
-                                iter = 1000,
-                                chains = 4,
-                                seed = 123) {
-  if (!requireNamespace("cmdstanr", quietly = TRUE)) {
-    stop("cmdstanr is required. Install it with: install.packages('cmdstanr')")
-  }
-  
+fit_vector_par_stan <- function(
+  stan_data,
+  stan_file = "inst/stan/vector_par.stan",
+  iter = 1000,
+  chains = 4,
+  seed = 123
+) {
+  #if (!requireNamespace("cmdstanr", quietly = TRUE)) {
+  #  stop("cmdstanr is required. Install it with: install.packages('cmdstanr')")
+  #}
+
   mod <- cmdstanr::cmdstan_model(stan_file)
   fit <- mod$sample(
     data = stan_data,
@@ -120,8 +122,9 @@ fit_par_item <- function(df, q = 1,
     a_tau = 1,
     b_tau = 1
   )
-  
-  mod <- cmdstanr::cmdstan_model(stan_file)
+
+  mod <- stanmodels$par_item
+  #mod <- cmdstanr::cmdstan_model(stan_file)
   fit <- mod$sample(
     data = stan_data,
     iter_sampling = iter,
@@ -173,8 +176,9 @@ fit_par_item_int <- function(df, q = 1,
     a_tau = 1,
     b_tau = 1
   )
-  
-  mod <- cmdstanr::cmdstan_model(stan_file)
+
+  mod <- stanmodels$par_item_int
+  #mod <- cmdstanr::cmdstan_model(stan_file)
   fit <- mod$sample(
     data = stan_data,
     iter_sampling = iter,

@@ -4,9 +4,12 @@
 \name{pastasales-package}
 \alias{pastasales}
 \alias{pastasales-package}
-\title{pastasales: What the Package Does (One Line, Title Case)}
+\title{BIOS735 Group Project (group 2)}
 \description{
-What the package does (one paragraph).
+This package contains functions for analyzing pasta sales data. Included are a few rstan models for comparison.
+}
+\references{
+Stan Development Team (NA). RStan: the R interface to Stan. R package version 2.32.3. https://mc-stan.org
 }
 \author{
 \strong{Maintainer}: First Last \email{first.last@example.com}
