@@ -5,7 +5,7 @@
 #' @param q Integer number of lag groups.
 #' @return Matrix of beta values.
 #' @examples
-#' beta_mat(betas = c(.5, 1.5), t = 5, q = 2)
+#' beta_mat(betas = c(.5, 1.5), t = 5)
 beta_mat <- function(betas, t) {
   q <- length(betas)
   stopifnot(
@@ -70,7 +70,7 @@ ll <- function(
     x <- matrix(x, ncol = 1, nrow = length(x))
   }
   t <- nrow(y)
-  B <- beta_mat(betas, t, q = length(betas))
+  B <- beta_mat(betas, t)
   A <- diag(t) - B
 
   Ay <- A %*% y
@@ -131,7 +131,7 @@ optim_fit <- function(
       gamma <- x[q + 2]
       sigma2 <- x[q + 3]
 
-      B <- beta_mat(betas, t, q = q)
+      B <- beta_mat(betas, t)
       A <- diag(t) - B
       Ay <- A %*% y
       resid <- Ay - alpha - (gamma * X)

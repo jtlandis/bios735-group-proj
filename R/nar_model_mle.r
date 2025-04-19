@@ -1,15 +1,26 @@
+#' @title Maximum Likelihood Estimation for NAR Model Parameters
+#' @name mle_nar_model
+#' @description This function estimates the parameters of a Normal Autoregressive (NAR) model using Maximum Likelihood Estimation (MLE).
+#' @param y a matrix of dimension t by n
+#' @param x a matrix of dimension t by n
+#' @param alpha a scalar coefficient for the intercept term
+#' @param betas a vector of coefficients for the autoregressive terms
+#' @param gamma a scalar coefficient for the promotion
+#' @return an estiamte for the respective Parameter
+NULL
+
+#' @rdname mle_nar_model
 mle_alpha <- function(y, x, betas, gamma) {
   t <- nrow(y)
   n <- ncol(y)
-  B <- beta_mat(betas, t, q = length(betas))
+  B <- beta_mat(betas, t)
   A <- diag(t) - B
   Ay <- A %*% y
   gammax <- gamma * x
   sum(Ay - gammax) / (t * n)
 }
 
-#' @param y a matrix of dimension t by n
-#' @param x a matrix of dimension t by n
+#' @rdname mle_nar_model
 mle_gamma <- function(y, x, betas, alpha) {
   t <- nrow(y)
   B <- beta_mat(betas, t, q = length(betas))
@@ -18,10 +29,11 @@ mle_gamma <- function(y, x, betas, alpha) {
   sum(Ay * x - (alpha * x)) / sum(x * x)
 }
 
+#' @rdname mle_nar_model
 mle_sigma2 <- function(y, x, betas, alpha, gamma) {
   t <- nrow(y)
   n <- ncol(y)
-  B <- beta_mat(betas, t, q = length(betas))
+  B <- beta_mat(betas, t)
   A <- diag(t) - B
   Ay <- A %*% y
   gammax <- gamma * x
@@ -56,6 +68,7 @@ align_head_tail_mat <- function(vec_head, vec_tail, n) {
   )
 }
 
+#' @rdname mle_nar_model
 mle_beta <- function(y, x, alpha, betas, gamma, index) {
   n <- ncol(y)
   # the derivative wrt beta_index
@@ -171,6 +184,7 @@ mle_params <- function(y, x, alpha, betas, gamma, sigma2) {
 
 ## --- Work in progres! ---
 
+#' @rdname mle_nar_model
 #' @examples
 #' betas <- c(.1, .2, .3)
 #' gamma <-  10
