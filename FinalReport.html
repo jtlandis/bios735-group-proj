@@ -9,11 +9,10 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Group 3: Abby Foes, Zheng Lan, Justin Landis, Yu Liu, Alec Reinhardt" />
+<meta name="author" content="Group 2" />
 
-<meta name="date" content="2025-04-15" />
 
-<title>BIOS 735 Report</title>
+<title>Modeling Promotional Pasta Sales with Hierarchical Poisson Autoregression</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -350,95 +349,232 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">BIOS 735 Report</h1>
-<h4 class="author">Group 3: Abby Foes, Zheng Lan, Justin Landis, Yu Liu,
-Alec Reinhardt</h4>
-<h4 class="date">2025-04-15</h4>
+<h1 class="title toc-ignore">Modeling Promotional Pasta Sales with
+Hierarchical Poisson Autoregression</h1>
+<h4 class="author">Group 2</h4>
 
 </div>
 
+<div id="TOC">
+<ul>
+<li><a href="#introduction" id="toc-introduction"><span class="toc-section-number">1</span> Introduction</a>
+<ul>
+<li><a href="#background" id="toc-background"><span class="toc-section-number">1.1</span> Background</a></li>
+<li><a href="#goals" id="toc-goals"><span class="toc-section-number">1.2</span> Goals</a></li>
+</ul></li>
+<li><a href="#data-description" id="toc-data-description"><span class="toc-section-number">2</span> Data Description</a></li>
+<li><a href="#model-derivation" id="toc-model-derivation"><span class="toc-section-number">3</span> Model Derivation</a>
+<ul>
+<li><a href="#extended-poisson-autoregressive-model" id="toc-extended-poisson-autoregressive-model"><span class="toc-section-number">3.1</span> Extended Poisson Autoregressive
+Model</a></li>
+<li><a href="#likelihood-function" id="toc-likelihood-function"><span class="toc-section-number">3.2</span> Likelihood Function</a></li>
+<li><a href="#gradient-score-function" id="toc-gradient-score-function"><span class="toc-section-number">3.3</span> Gradient (Score Function)</a></li>
+</ul></li>
+<li><a href="#estimation-methods" id="toc-estimation-methods"><span class="toc-section-number">4</span> Estimation Methods</a>
+<ul>
+<li><a href="#em-algorithm" id="toc-em-algorithm"><span class="toc-section-number">4.1</span> EM Algorithm</a></li>
+<li><a href="#newton-raphson" id="toc-newton-raphson"><span class="toc-section-number">4.2</span> Newton-Raphson</a></li>
+<li><a href="#bayesian-inference-mcmc" id="toc-bayesian-inference-mcmc"><span class="toc-section-number">4.3</span> Bayesian Inference (MCMC)</a></li>
+</ul></li>
+<li><a href="#model-evaluation-and-predictive-performance" id="toc-model-evaluation-and-predictive-performance"><span class="toc-section-number">5</span> Model Evaluation and Predictive
+Performance</a></li>
+<li><a href="#machine-learning-benchmarks" id="toc-machine-learning-benchmarks"><span class="toc-section-number">6</span> Machine Learning Benchmarks</a>
+<ul>
+<li><a href="#random-forest" id="toc-random-forest"><span class="toc-section-number">6.1</span> Random Forest</a></li>
+<li><a href="#hidden-markov-model" id="toc-hidden-markov-model"><span class="toc-section-number">6.2</span> Hidden Markov Model</a></li>
+</ul></li>
+<li><a href="#summary-and-discussion" id="toc-summary-and-discussion"><span class="toc-section-number">7</span> Summary and Discussion</a></li>
+</ul>
+</div>
 
-<div id="introduction" class="section level1">
-<h1>Introduction</h1>
-<p>We identified a dataset for pasta sales from an Italian grocery store
-from January 2014 to December 2018. This datasets includes 116 time
-series, each with 1,798 time points, including the quantity of sales for
-specific pasta items and whether they were on promotion at the time. The
-time series are hierarchical, with four brands and 45 unique items per
-brand. Based on preliminary data analysis, there is evidence of common
-temporal patterns in item sales within each brand as well as a
-relationship between promotion and sales.</p>
-<div id="research-questions" class="section level2">
-<h2>Research Questions</h2>
-<ol style="list-style-type: decimal">
-<li><p>Can we improve forecasting accuracy by accounting for the
-hierarchical structure in the data compared with modeling each brand and
-item independently? What about models that account for sparsity (for
-those items with many days of no sales) or periodicity?</p></li>
-<li><p>How do temporal trends and the promotion-sales relationship vary
-across pasts brands? Which points in time show the largest deviations?
-Is there evidence of periodic (seasonal) trends, and how do these relate
-across brands and items?</p></li>
-</ol>
+<div id="introduction" class="section level1" number="1">
+<h1><span class="header-section-number">1</span> Introduction</h1>
+<p>We analyze pasta sales data from an Italian grocery store, consisting
+of 116 items across four brands, observed daily from 2014 to 2018. Our
+goal is to model item-level sales with dependence on past observations,
+promotional status, and latent brand effects.</p>
+<p>We compare likelihood-based models (EM, Newton-Raphson), Bayesian
+inference (MCMC), and machine learning benchmarks (Random Forests,
+Hidden Markov Models), using predictive accuracy as the main evaluation
+metric.</p>
+<div id="background" class="section level2" number="1.1">
+<h2><span class="header-section-number">1.1</span> Background</h2>
+</div>
+<div id="goals" class="section level2" number="1.2">
+<h2><span class="header-section-number">1.2</span> Goals</h2>
 </div>
 </div>
-<div id="methods" class="section level1">
-<h1>Methods</h1>
-<div id="models" class="section level2">
-<h2>Models</h2>
-<p>To develop a forecasting model, we will adapt various classical
-approaches for time series modeling. For instance, the autoregressive
-model (AR) (see, e.g. Box et al. (2015)) assumes that the current
-outcome depends linearly on the previously observed outcomes (up to a
-certain lag <span class="math inline">\(q\)</span>), covariates, and a
-noise term. This can be expressed as</p>
-<p><span class="math display">\[y_t = \alpha_0+\sum_{l=1}^q \beta_l
-y_{t-l} + \gamma x_{t} + \epsilon_{t}\]</span></p>
-<p>where <span class="math inline">\(y_t\)</span> is the outcome at time
-point <span class="math inline">\(t\)</span>, <span class="math inline">\(\alpha_0\)</span> is the population intercept, the
-<span class="math inline">\(\beta_l\)</span> terms capture the
-dependence between <span class="math inline">\(y_t\)</span> and previous
-time points, <span class="math inline">\(\gamma\)</span> captures the
-effect of (time-varying) covariate <span class="math inline">\(x_t\)</span> on <span class="math inline">\(y_t\)</span>, and <span class="math inline">\(\epsilon_t\)</span> is the noise term, assumed to
-be mean zero Gaussian. As a first step, we plan to fit these models for
-each brand and item independently. The R package <code>astsa</code>
-utilizes model fitting methods such as Burg’s Algorithm and Yule-Walker
-equations. However, we plan to also implement a MLE-based approach.
-Chapter 2 of the book (Funatogawa et al. (2018)) details the likelihood
-and steps for MLE for AR models.</p>
-<p>In order to capture shared patterns among items within each brand, we
-propose a mixed effects AR model (see Nicholls and Quinn (2012) for
-example) of the form</p>
-<p><span class="math display">\[ y_{hi,t} = (\alpha_0+a_h)+\sum_{l=1}^q
-(\beta_l+b_{h,l}) y_{hi,t-l} + (\gamma+g_h) x_{hi,t} +
-\epsilon_{t}\]</span></p>
-<p><span class="math display">\[ \alpha_h \sim N(0,\sigma_{\alpha}^2), \
-b_{h,l} \sim N(0,\sigma_{\beta}^2), \ g_h \sim N(0,\sigma_{\gamma}^2), \
-\epsilon_t \sim N(0,\sigma_{\epsilon}^2)\]</span></p>
-<p>where we introduce random intercept <span class="math inline">\(a_h\)</span>, and random slopes <span class="math inline">\(b_{h,l}\)</span> and <span class="math inline">\(g_h\)</span> for the effects of previous
-timepoints and covariates, respectively. We assume that each term comes
-from a common distribution specific to each brand, in effect pooling
-information across items within each brand while still allowing for
-deviations. We will also consider simplifications and possible
-extensions of the above model, including modeling cross-brand
-dependencies. For model fitting, we will consider a Bayesian variation
-of the above models, with suitable priors for model coefficients and
-residual noise. We will implement a Markov Chain Monte Carlo (MCMC)
-algorithm to sample the posterior of model parameters, which in turn
-allows for both prediction and uncertainty quantification (e.g. credible
-intervals).</p>
-<div id="moving-average-model" class="section level3">
-<h3>Moving Average Model</h3>
-<p><span class="math display">\[Y_{i,t} = \alpha + \epsilon_{i,t}
-+\sum_{j=1}^q\theta_i\epsilon_{i,t-j}\]</span></p>
+<div id="data-description" class="section level1" number="2">
+<h1><span class="header-section-number">2</span> Data Description</h1>
+<pre class="r"><code>data(&quot;data_set_tidy&quot;)
+glimpse(data_set_tidy)</code></pre>
+<pre><code>## Rows: 212,164
+## Columns: 5
+## $ DATE  &lt;date&gt; 2014-01-02, 2014-01-02, 2014-01-02, 2014-01-02, 2014-01-02, 201…
+## $ brand &lt;chr&gt; &quot;B1&quot;, &quot;B1&quot;, &quot;B1&quot;, &quot;B1&quot;, &quot;B1&quot;, &quot;B1&quot;, &quot;B1&quot;, &quot;B1&quot;, &quot;B1&quot;, &quot;B1&quot;, &quot;B1&quot;…
+## $ item  &lt;chr&gt; &quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;4&quot;, &quot;5&quot;, &quot;6&quot;, &quot;7&quot;, &quot;8&quot;, &quot;9&quot;, &quot;10&quot;, &quot;11&quot;, &quot;12&quot;, &quot;…
+## $ QTY   &lt;dbl&gt; 7, 3, 0, 2, 3, 1, 0, 4, 0, 0, 0, 0, 7, 2, 5, 2, 0, 7, 1, 0, 0, 4…
+## $ PROMO &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…</code></pre>
+<p>Each row corresponds to daily sales for a specific item, along with
+brand and promotion indicators.</p>
 </div>
-<div id="arma-model" class="section level3">
-<h3>ARMA Model</h3>
-<p><span class="math display">\[y_t = \alpha + \beta_1 y_{t-1}+\ldots
-+\beta_p y_{t-p} + \epsilon_t + \epsilon_{t-1} \theta_{q} + \ldots +
-\epsilon_{t-q} \theta_{q}\]</span></p>
+<div id="model-derivation" class="section level1" number="3">
+<h1><span class="header-section-number">3</span> Model Derivation</h1>
+<div id="extended-poisson-autoregressive-model" class="section level2" number="3.1">
+<h2><span class="header-section-number">3.1</span> Extended Poisson
+Autoregressive Model</h2>
+<p>Let the sales outcome for item <span class="math inline">\(i\)</span>
+at time <span class="math inline">\(t\)</span> be denoted by <span class="math inline">\(y_{it}\)</span>, where:</p>
+<p><span class="math display">\[
+i \in \{1,\ldots,n\}, \quad t \in \{1,\ldots,T\}, \quad g_i \in
+\{1,\ldots,B\}
+\]</span></p>
+<p>Here, <span class="math inline">\(g_i\)</span> denotes the brand
+(group) to which item <span class="math inline">\(i\)</span>
+belongs.</p>
+<p>We define the model as:</p>
+<p><span class="math display">\[
+y_{t} \sim \text{Poisson}(m_{t})
+\]</span></p>
+<p><span class="math display">\[
+m_t = \sum_{l=1}^{q} \beta_{l} y_{t-l} +
+\left(1 - \sum_{l=1}^{q} \beta_{l} \right) \cdot \exp(\mathbf{x}_t^\top
+\boldsymbol{\gamma})
+\]</span></p>
+<p>Where:</p>
+<ul>
+<li><span class="math inline">\(\beta_{l}\)</span>: AR coefficients
+(constrained so sum <span class="math inline">\(\leq\)</span> 1)</li>
+<li><span class="math inline">\(\gamma\)</span>: covariate effect
+vector</li>
+</ul>
+</div>
+<div id="likelihood-function" class="section level2" number="3.2">
+<h2><span class="header-section-number">3.2</span> Likelihood
+Function</h2>
+<p>Let <span class="math inline">\(\boldsymbol{\theta}\)</span> denote
+the full set of model parameters. The full likelihood across all items
+and times is:</p>
+<p><span class="math display">\[
+\mathcal{L}(\boldsymbol{\theta}) =
+\prod_{t=q+1}^T
+\frac{m_{t}^{y_{t}} e^{-m_{t}}}{y_{t}!}
+\]</span></p>
+<p>The corresponding log-likelihood, used for optimization and posterior
+inference, is:</p>
+<p><span class="math display">\[
+\log \mathcal{L}(\boldsymbol{\theta}) =
+\sum_{t=q+1}^T \left[
+y_{t} \log(m_{t}) - m_{t} - \log(y_{t}!)
+\right]
+\]</span> Where,</p>
+<p><span class="math display">\[
+m_t = \underbrace{\sum_{l=1}^{q} \beta_l y_{t-l}}_{\text{AR part}} +
+\underbrace{\left(1 - \sum{l=1}^{q} \beta_l \right)}_{\text{mixing
+weight}} \cdot
+\underbrace{\exp(\mathbf{x}t^\top \boldsymbol{\gamma})}_{\text{covariate
+part}}
+\]</span></p>
+</div>
+<div id="gradient-score-function" class="section level2" number="3.3">
+<h2><span class="header-section-number">3.3</span> Gradient (Score
+Function)</h2>
+<p>Define the following:</p>
+<ul>
+<li><span class="math inline">\(a_t = \sum_{l=q}^q
+\beta_ty_{t-l}\)</span></li>
+<li><span class="math inline">\(c_t = \exp(x_t^T\gamma)\)</span></li>
+<li><span class="math inline">\(w = 1 - \sum\beta_t\)</span></li>
+<li><span class="math inline">\(m_t = a_t + w \cdot c_t\)</span></li>
+</ul>
+<p>Then, the derivative of the log-likelihood with respect to <span class="math inline">\(\gamma_j\)</span> is: <span class="math display">\[
+\frac{\partial{\log\mathcal{L}}}{\partial\gamma_j} = \sum_{t = q+ l}^T
+\left[ \frac{y_t}{m_t} - 1\right] \cdot w \cdot c_t \cdot x_{tj}
+\]</span></p>
+<p>And the derivative of the log-likelihood with respect to <span class="math inline">\(\beta_k\)</span> is: <span class="math display">\[
+\frac{\partial{\log\mathcal{L}}}{\partial\beta_k} = \sum_{t = q+ l}^T
+\left[ \frac{y_t}{m_t} - 1\right] \left[ y_{t-k} - c_t\right]
+\]</span></p>
 </div>
 </div>
+<div id="estimation-methods" class="section level1" number="4">
+<h1><span class="header-section-number">4</span> Estimation Methods</h1>
+<div id="em-algorithm" class="section level2" number="4.1">
+<h2><span class="header-section-number">4.1</span> EM Algorithm</h2>
+<ul>
+<li>E-step: Applicable if we add new random intercepts (either item or
+brand level)</li>
+<li>M-step: Maximize the expected log-likelihood with respect to model
+parameters <span class="math inline">\(\gamma\)</span>, <span class="math inline">\(\beta\)</span>, and <span class="math inline">\(\tau\)</span></li>
+</ul>
+</div>
+<div id="newton-raphson" class="section level2" number="4.2">
+<h2><span class="header-section-number">4.2</span> Newton-Raphson</h2>
+<ul>
+<li>Use gradients and Hessians of the log-likelihood to iteratively
+update parameters</li>
+</ul>
+</div>
+<div id="bayesian-inference-mcmc" class="section level2" number="4.3">
+<h2><span class="header-section-number">4.3</span> Bayesian Inference
+(MCMC)</h2>
+<ul>
+<li><p>Fit the independent Poisson Autoregression (PAR) model for each
+item with MCMC (currently implemented in STAN)</p></li>
+<li><p>Place priors directly on model parameters</p></li>
+<li><p><span class="math inline">\(\tau\)</span>: mixing weight for AR
+component, <span class="math inline">\(\beta = \tau
+\tilde{\boldsymbol{\beta}}\)</span></p></li>
+</ul>
+<p>Priors:</p>
+<ul>
+<li><span class="math inline">\(\boldsymbol{\gamma} \sim
+\mathcal{N}(\boldsymbol{\mu}, \Sigma_\gamma)\)</span></li>
+<li><span class="math inline">\(\Sigma_\gamma \sim
+\text{Inv-Wishart}(\nu, \Psi)\)</span> — (approximated as fixed in
+Stan)</li>
+<li><span class="math inline">\(\tilde{\boldsymbol{\beta}} \sim
+\text{Dirichlet}(\alpha)\)</span></li>
+<li><span class="math inline">\(\tau \sim \text{Beta}(a,
+b)\)</span></li>
+</ul>
+</div>
+</div>
+<div id="model-evaluation-and-predictive-performance" class="section level1" number="5">
+<h1><span class="header-section-number">5</span> Model Evaluation and
+Predictive Performance</h1>
+<p>We evaluate models using holdout-based prediction: the final 10–20%
+of each item’s time series is reserved for testing.</p>
+<pre class="r"><code># Example: results &lt;- evaluate_holdout(...)
+# knitr::kable(results)</code></pre>
+<p>** Evaluation Metrics ** - Root Mean Squared Error (RMSE) - Mean
+Absolute Error (MAE) - Log Predictive Density (for Bayesian models) -
+Posterior predictive interval coverage (for MCMC)</p>
+</div>
+<div id="machine-learning-benchmarks" class="section level1" number="6">
+<h1><span class="header-section-number">6</span> Machine Learning
+Benchmarks</h1>
+<div id="random-forest" class="section level2" number="6.1">
+<h2><span class="header-section-number">6.1</span> Random Forest</h2>
+<pre class="r"><code># rf_fit &lt;- fit_random_forest(...)</code></pre>
+</div>
+<div id="hidden-markov-model" class="section level2" number="6.2">
+<h2><span class="header-section-number">6.2</span> Hidden Markov
+Model</h2>
+<pre class="r"><code># hmm_fit &lt;- fit_hmm(...)</code></pre>
+</div>
+</div>
+<div id="summary-and-discussion" class="section level1" number="7">
+<h1><span class="header-section-number">7</span> Summary and
+Discussion</h1>
+<ul>
+<li>Which methods give the most accurate predictions for sparse,
+autocorrelated data?</li>
+<li>What is the trade-off between hierarchical shrinkage and
+item-specific flexibility?</li>
+<li>Are machine learning models (e.g., random forests) better suited for
+forecasting than structured generative models?</li>
+</ul>
 </div>
 
 

@@ -33,6 +33,45 @@ simulate_par <- function(T = 200, beta = c(0.2), gamma = c(1.5), x = NULL, mu = 
   list(y = y, x = x, beta = beta, gamma = gamma, mu = mu)
 }
 
+#' Simulate Time Series from PAR Model with Item Intercept
+#'
+#' @param T Number of time points
+#' @param q Number of AR lags
+#' @param gamma Covariate coefficient vector
+#' @param beta_lags AR coefficients (length q, should sum <= 1)
+#' @param eta Item-specific intercept
+#' @param promo_prob Probability of promotion at each time
+#' @param seed Optional random seed
+#'
+#' @return A data.frame with y, time, promo
+#' @export
+simulate_par_intercept <- function(T = 100, q = 1, gamma = 1, beta_lags = 0.5,
+                                   eta = 0, promo_prob = 0.2, seed = NULL) {
+  if (!is.null(seed)) set.seed(seed)
+  
+  if (length(beta_lags) != q) stop("Length of beta_lags must be q")
+  stopifnot(sum(beta_lags) <= 1)
+  
+  x_t <- rbinom(T, 1, promo_prob)
+  y <- numeric(T)
+  
+  # Initialize first q values
+  y[1:q] <- rpois(q, lambda = 5)
+  
+  for (t in (q + 1):T) {
+    ar_part <- sum(beta_lags * y[(t - 1):(t - q)])
+    cov_part <- exp(eta + sum(gamma * x_t[t]))
+    m_t <- ar_part + (1 - sum(beta_lags)) * cov_part
+    y[t] <- rpois(1, lambda = m_t)
+  }
+  
+  data.frame(
+    time = 1:T,
+    y = y,
+    promo = x_t
+  )
+}
+
 #' Simulate Hierarchical Vector Poisson Autoregressive (PAR) Time Series
 #'
 #' @param n_items Number of items

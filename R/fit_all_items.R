@@ -132,3 +132,56 @@ fit_par_item <- function(df, q = 1,
   )
   return(fit)
 }
+
+#' Prepare and Fit PAR Model for a Single Item using Stan (with Item Intercept)
+#'
+#' @param df A data.frame with columns `y`, `time`, and covariates (e.g., `promo`)
+#' @param q Number of AR lags
+#' @param stan_file Path to Stan file (default = "inst/stan/fit_par_intercept.stan")
+#' @param iter Number of iterations (default = 1000)
+#' @param chains Number of MCMC chains (default = 4)
+#' @param seed Random seed
+#'
+#' @return A cmdstanr fit object
+#' @export
+fit_par_item_int <- function(df, q = 1,
+                             stan_file = "inst/stan/par_item_intercept.stan",
+                             iter = 1000, chains = 4, seed = 123) {
+  stopifnot("y" %in% names(df), "time" %in% names(df))
+  
+  # Add AR lags
+  for (l in 1:q) {
+    df[[paste0("lag", l)]] <- dplyr::lag(df$y, l)
+  }
+  df <- df %>% dplyr::filter(dplyr::if_all(dplyr::starts_with("lag"), ~ !is.na(.)))
+  
+  y <- df$y
+  X <- as.matrix(df |> dplyr::select(dplyr::starts_with("promo")))
+  
+  T_obs <- length(y)
+  p <- ncol(X)
+  
+  stan_data <- list(
+    T_obs = T_obs,
+    q = q,
+    p = p,
+    y = y,
+    X = X,
+    mu_gamma = rep(0, p),
+    Sigma_gamma = diag(p),
+    alpha = rep(1 / q, q),
+    a_tau = 1,
+    b_tau = 1
+  )
+  
+  mod <- cmdstanr::cmdstan_model(stan_file)
+  fit <- mod$sample(
+    data = stan_data,
+    iter_sampling = iter,
+    iter_warmup = iter,
+    chains = chains,
+    seed = seed,
+    refresh = 500
+  )
+  return(fit)
+}

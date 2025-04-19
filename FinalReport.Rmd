@@ -2,10 +2,10 @@
 title: "Modeling Promotional Pasta Sales with Hierarchical Poisson Autoregression"
 author: "Group 2"
 output: 
-  pdf_document: 
+  html_document: 
     toc: true
     number_sections: true
-  html_document: 
+  pdf_document: 
     toc: true
     number_sections: true
 ---
@@ -81,11 +81,9 @@ $$
 Where, 
 
 $$
-
 m_t = \underbrace{\sum_{l=1}^{q} \beta_l y_{t-l}}_{\text{AR part}} +
 \underbrace{\left(1 - \sum{l=1}^{q} \beta_l \right)}_{\text{mixing weight}} \cdot
 \underbrace{\exp(\mathbf{x}t^\top \boldsymbol{\gamma})}_{\text{covariate part}}
-
 $$
 
 
