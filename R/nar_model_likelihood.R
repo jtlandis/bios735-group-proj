@@ -4,8 +4,6 @@
 #' @param t Integer number of time points.
 #' @param q Integer number of lag groups.
 #' @return Matrix of beta values.
-#' @examples
-#' beta_mat(betas = c(.5, 1.5), t = 5)
 beta_mat <- function(betas, t) {
   q <- length(betas)
   stopifnot(
