@@ -10,16 +10,19 @@ prepare_data_stan_vectorpar <- function(data, q = 1) {
   
   item_ids <- sort(unique(data$item_id))
   brand_ids <- sort(unique(data$brand_id))
-  p <- 1  # promo only for now
-  
-  for (l in 1:q) {
-    data <- data %>%
-      group_by(item_id) %>%
-      arrange(time, .by_group = TRUE) %>%
-      mutate(!!paste0("lag", l) := lag(y, l)) %>%
-      ungroup()
-  }
-  
+  p <- 1 # promo only for now
+  q_seq <- seq_len(q)
+  data <- data %>%
+    group_by(item_id) %>%
+    arrange(time, .by_group = TRUE) %>%
+    mutate(
+      !!!lapply(
+        stats::setNames(q_seq, paste0("lag", q_seq)),
+        function(x) rlang::expr(lag(y, !!x))
+      )
+    ) %>%
+    ungroup()
+
   # Drop rows with NA lags
   data <- data %>%
     filter(if_all(starts_with("lag"), ~ !is.na(.)))
