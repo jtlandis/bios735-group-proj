@@ -4,6 +4,7 @@
 #' @param t Integer number of time points.
 #' @param q Integer number of lag groups.
 #' @return Matrix of beta values.
+#' @export
 beta_mat <- function(betas, t) {
   q <- length(betas)
   stopifnot(
