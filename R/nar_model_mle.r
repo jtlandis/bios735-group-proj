@@ -189,35 +189,6 @@ mle_params <- function(y, x, alpha, betas, gamma, sigma2) {
 ## --- Work in progres! ---
 
 #' @rdname mle_nar_model
-#' @examples
-#' betas <- c(.1, .2, .3)
-#' gamma <-  10
-#' alpha <- 3
-#' t <- 100
-#' x <- rep(c(0, 0, 0, 0, 1, 1, 1, 1, 0, 0), 10)
-#' A <- diag(t) - beta_mat(betas, t)
-#' A_inv <- solve(A)
-#' A_inv
-#' sigma2 <- 1
-#' V <- sigma2 * (A_inv %*% t(A_inv))
-#' mu <- A_inv %*% (alpha + (gamma * x))
-#'
-#' y <- mvtnorm::rmvnorm(n = 1, mean = mu, sigma = V)
-#' bad_alphas <- 0
-#' bad_betas <- c(1, 1, 1)
-#' bad_gamma <- 0
-#' bad_sigma2 <- 2
-#' #should adjust to a while loop that
-#' # compares prior iter.
-#' optim_mle_params(
-#'  y = y,
-#'  x = x,
-#'  alpha = bad_alphas,
-#'  betas = bad_betas,
-#'  gamma = bad_gamma,
-#'  sigma2 = bad_sigma2,
-#'  times = 150,
-#'  trace_mod = 10)
 optim_mle_params <- function(
   y,
   x,
@@ -273,3 +244,32 @@ optim_mle_params <- function(
 
   params
 }
+
+# @examples
+# betas <- c(.1, .2, .3)
+# gamma <-  10
+# alpha <- 3
+# t <- 100
+# x <- rep(c(0, 0, 0, 0, 1, 1, 1, 1, 0, 0), 10)
+# A <- diag(t) - beta_mat(betas, t)
+# A_inv <- solve(A)
+# sigma2 <- 1
+# V <- sigma2 * (A_inv %*% t(A_inv))
+# mu <- A_inv %*% (alpha + (gamma * x))
+#
+# y <- mvtnorm::rmvnorm(n = 1, mean = mu, sigma = V)
+# bad_alphas <- 0
+# bad_betas <- c(1, 1, 1)
+# bad_gamma <- 0
+# bad_sigma2 <- 2
+# #should adjust to a while loop that
+# # compares prior iter.
+# optim_mle_params(
+#  y = y,
+#  x = x,
+#  alpha = bad_alphas,
+#  betas = bad_betas,
+#  gamma = bad_gamma,
+#  sigma2 = bad_sigma2,
+#  times = 150,
+#  trace_mod = 10)
