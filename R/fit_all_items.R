@@ -36,7 +36,7 @@ fit_all_items <- function(item_list, q = 1) {
 summarize_par_fits <- function(fits) {
   purrr::map_dfr(seq_along(fits), function(i) {
     fit <- fits[[i]]
-    tibble(
+    tibble::tibble(
       item_id = i,
       loglik = fit$loglik,
       converged = fit$converged,
@@ -44,8 +44,8 @@ summarize_par_fits <- function(fits) {
       gamma = list(fit$gamma)
     )
   }) %>%
-    unnest_wider(beta, names_sep = "_b") %>%
-    unnest_wider(gamma, names_sep = "_g")
+    tidyr::unnest_wider(beta, names_sep = "_b") %>%
+    tidyr::unnest_wider(gamma, names_sep = "_g")
 }
 
 #' Fit the Vector PAR model in Stan
