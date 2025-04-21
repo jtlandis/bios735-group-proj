@@ -14,22 +14,22 @@
 par_loglik <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
   T <- length(y)
   stopifnot(nrow(x) == T)
-  
+  if (length(gamma) == 0) gamma <- 0
   ll <- 0
   for (t in (q + 1):T) {
     y_lags <- y[(t - 1):(t - q)]
     x_t <- x[t, ]
-    
+
     auto_part <- sum(beta * y_lags)
     linear_part <- mu + sum(x_t * gamma)
     mix_weight <- 1 - sum(beta)
-    
+
     m_t <- auto_part + mix_weight * exp(linear_part)
-    if (m_t <= 0) m_t <- 1e-10  # safeguard
-    
+    if (m_t <= 0) m_t <- 1e-10 # safeguard
+
     ll <- ll + y[t] * log(m_t) - m_t - lgamma(y[t] + 1)
   }
-  
+
   return(ll)
 }
 
