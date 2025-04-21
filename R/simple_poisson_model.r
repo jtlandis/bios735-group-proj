@@ -93,7 +93,15 @@ ddll_pois <- function(y, x, alpha, betas, gamma) {
   -out
 }
 
-bfgs <- function(y, x, alpha, betas, gamma, max_iter = 1000, trace_mod = 1) {
+simple_pois_bfgs <- function(
+  y,
+  x,
+  alpha,
+  betas,
+  gamma,
+  max_iter = 1000,
+  trace_mod = 1
+) {
   q <- length(betas)
   if (q == 0) {
     beta_slice <- 0
@@ -101,22 +109,60 @@ bfgs <- function(y, x, alpha, betas, gamma, max_iter = 1000, trace_mod = 1) {
     beta_slice <- 2:(q + 1)
   }
   gamma_slice <- q + 2
-  ident <- diag(q + 2)
-  f <- function(params) {
+
+  f <- function(params, y, x) {
     ll_pois(y, x, params[1], params[beta_slice], params[gamma_slice])
   }
-  g <- function(params) {
+  g <- function(params, y, x) {
     unlist(dll_pois(y, x, params[1], params[beta_slice], params[gamma_slice]))
   }
 
-  H <- ddll_pois(y, x, alpha, betas, gamma) |> solve()
+  general_bfgs(
+    params = c(alpha, betas, gamma),
+    f = f,
+    g = g,
+    y = y,
+    x = x,
+    H = ddll_pois(y, x, alpha, betas, gamma) |> solve(),
+    max_iter = max_iter,
+    trace_mod = trace_mod
+  )
+}
 
-  p <- function(params) {
-    -H %*% g(params)
+#' perform bfgs similar to optim
+#' @param params initial parameters
+#' @param f the log likelihood function to maximize
+#' @param g the gradient function
+#' @param ... additional arguments to pass to f and g
+#' @param H initial inv-Hessian matrix. Default is the
+#'  identity, but convergence is more performant with the
+#'  true inv-Hessian matrix.
+#' @param max_iter maximum number of iterations
+#' @param trace_mod trace modulus. 0 is no tracing, 1 is
+#'  tracing each step, 2 is tracing every 2 steps, etc.
+#' @param step_size step size in gradient descent
+#' @return optimized parameters
+general_bfgs <- function(
+  params,
+  f,
+  g,
+  ...,
+  H = diag(length(params)),
+  max_iter = 1000,
+  trace_mod = 1,
+  step_size = 0.1
+) {
+  force(f)
+  force(g)
+  force(H)
+  force(step_size)
+  ident <- diag(length(params))
+  p <- function(params, ...) {
+    -H %*% g(params, ...)
   }
 
-  step_by <- function(params, by) {
-    p(params) * by
+  step_by <- function(params, by, ...) {
+    p(params, ...) * by
   }
 
   update <- function(s, y) {
@@ -128,23 +174,22 @@ bfgs <- function(y, x, alpha, betas, gamma, max_iter = 1000, trace_mod = 1) {
     (ident - (syt / yts)) %*% H %*% (ident - (yst / yts)) + (sst / yts)
   }
 
-  params <- c(alpha, betas, gamma)
-  grade <- g(params)
-  LL <- f(params)
+  grade <- g(params, ...)
+  LL <- f(params, ...)
   count_cache <- count <- 0L
-  step_size <- 0.1
   diffs <- numeric(max_iter)
   diff_slice <- 0:2
   while (count < max_iter) {
     count <- count + 1L
-    s <- step_by(params, step_size)
+    should_trace <- trace_mod != 0 && count %% trace_mod == 0
+    s <- step_by(params = params, by = step_size, ...)
     params_ <- params + s
-    grade_ <- g(params_)
+    grade_ <- g(params_, ...)
     H_ <- update(s, grade_ - grade)
-    LL_ <- f(params_)
+    LL_ <- f(params_, ...)
     LL_diff <- LL_ - LL
     diffs[count] <- LL_diff
-    if (count %% trace_mod == 0) {
+    if (should_trace) {
       cat(
         sprintf(
           "Iteration %i: LL = %.3f, LL_old: %.3f, params: %s, step size: %.6f\n",
@@ -157,8 +202,8 @@ bfgs <- function(y, x, alpha, betas, gamma, max_iter = 1000, trace_mod = 1) {
       )
     }
 
-    if (abs(LL_ - LL) < 1e-6) {
-      cat("INFO: Convergence reached\n")
+    if (abs(LL_ - LL) < 1e-4) {
+      if (should_trace) cat("INFO: Convergence reached\n")
       return(params_)
     }
 
@@ -166,7 +211,7 @@ bfgs <- function(y, x, alpha, betas, gamma, max_iter = 1000, trace_mod = 1) {
     # with a smaller step step_size
     if (LL_ < LL) {
       if (count - count_cache > 1) {
-        cat("INFO: Decreasing step size\n")
+        if (should_trace) cat("INFO: Decreasing step size\n")
         step_size <- step_size / 2
         #count <- count - 1L
         count_cache <- count
@@ -177,7 +222,7 @@ bfgs <- function(y, x, alpha, betas, gamma, max_iter = 1000, trace_mod = 1) {
         .diff <- diff(diffs[(count - 2):count])
         slp <- .diff / mean(.diff) - 1
         if (all(slp > -0.2) && all(slp < 0.2)) {
-          cat("INFO: Increasing step size\n")
+          if (should_trace) cat("INFO: Increasing step size\n")
           step_size <- step_size * 1.8
           count_cache <- count
         }
