@@ -10,19 +10,23 @@
 fit_all_items <- function(item_list, q = 1) {
   purrr::map(seq_along(item_list), function(i) {
     item <- item_list[[i]]
-    tryCatch({
-      fit <- fit_par_optim(
-        y = item$y,
-        x = item$x,
-        q = q
-      )
-      fit$item_id <- i
-      return(fit)
-    }, error = function(e) {
-      message("Model failed for item ", i, ": ", e$message)
-      return(NULL)
-    })
-  }) %>% purrr::compact()
+    tryCatch(
+      {
+        fit <- fit_par_optim(
+          y = item$y,
+          x = item$x,
+          q = q
+        )
+        fit$item_id <- i
+        return(fit)
+      },
+      error = function(e) {
+        message("Model failed for item ", i, ": ", e$message)
+        return(NULL)
+      }
+    )
+  }) %>%
+    purrr::compact()
 }
 
 #' Summarize PAR Fit Results Across Items
@@ -69,7 +73,10 @@ fit_vector_par_stan <- function(
   #  stop("cmdstanr is required. Install it with: install.packages('cmdstanr')")
   #}
 
-  mod <- cmdstanr::cmdstan_model(stan_file)
+  mod <- cmdstanr::cmdstan_model(
+    system.file("stan/vector_par.stan", package = "pastasales")
+  )
+  #mod <- stanmodels$vector_par
   fit <- mod$sample(
     data = stan_data,
     iter_sampling = iter,
@@ -78,7 +85,7 @@ fit_vector_par_stan <- function(
     seed = seed,
     refresh = 500
   )
-  
+
   return(fit)
 }
 
@@ -93,23 +100,29 @@ fit_vector_par_stan <- function(
 #'
 #' @return A cmdstanr fit object
 #' @export
-fit_par_item <- function(df, q = 1,
-                         stan_file = "inst/stan/par_item.stan",
-                         iter = 1000, chains = 4, seed = 123) {
+fit_par_item <- function(
+  df,
+  q = 1,
+  stan_file = "inst/stan/par_item.stan",
+  iter = 1000,
+  chains = 4,
+  seed = 123
+) {
   stopifnot("y" %in% names(df), "time" %in% names(df))
-  
+
   # Add AR lags
   for (l in 1:q) {
     df[[paste0("lag", l)]] <- dplyr::lag(df$y, l)
   }
-  df <- df %>% dplyr::filter(dplyr::if_all(dplyr::starts_with("lag"), ~ !is.na(.)))
-  
+  df <- df %>%
+    dplyr::filter(dplyr::if_all(dplyr::starts_with("lag"), ~!is.na(.)))
+
   y <- df$y
   X <- as.matrix(df |> dplyr::select(dplyr::starts_with("promo")))
-  
+
   T_obs <- length(y)
   p <- ncol(X)
-  
+
   stan_data <- list(
     T_obs = T_obs,
     q = q,
@@ -123,8 +136,10 @@ fit_par_item <- function(df, q = 1,
     b_tau = 1
   )
 
-  mod <- stanmodels$par_item
-  #mod <- cmdstanr::cmdstan_model(stan_file)
+  #mod <- stanmodels$par_item
+  mod <- cmdstanr::cmdstan_model(
+    system.file("stan/par_item.stan", package = "pastasales")
+  )
   fit <- mod$sample(
     data = stan_data,
     iter_sampling = iter,
@@ -147,23 +162,29 @@ fit_par_item <- function(df, q = 1,
 #'
 #' @return A cmdstanr fit object
 #' @export
-fit_par_item_int <- function(df, q = 1,
-                             stan_file = "inst/stan/par_item_intercept.stan",
-                             iter = 1000, chains = 4, seed = 123) {
+fit_par_item_int <- function(
+  df,
+  q = 1,
+  stan_file = "inst/stan/par_item_intercept.stan",
+  iter = 1000,
+  chains = 4,
+  seed = 123
+) {
   stopifnot("y" %in% names(df), "time" %in% names(df))
-  
+
   # Add AR lags
   for (l in 1:q) {
     df[[paste0("lag", l)]] <- dplyr::lag(df$y, l)
   }
-  df <- df %>% dplyr::filter(dplyr::if_all(dplyr::starts_with("lag"), ~ !is.na(.)))
-  
+  df <- df %>%
+    dplyr::filter(dplyr::if_all(dplyr::starts_with("lag"), ~!is.na(.)))
+
   y <- df$y
   X <- as.matrix(df |> dplyr::select(dplyr::starts_with("promo")))
-  
+
   T_obs <- length(y)
   p <- ncol(X)
-  
+
   stan_data <- list(
     T_obs = T_obs,
     q = q,
@@ -177,8 +198,10 @@ fit_par_item_int <- function(df, q = 1,
     b_tau = 1
   )
 
-  mod <- stanmodels$par_item_int
-  #mod <- cmdstanr::cmdstan_model(stan_file)
+  #mod <- stanmodels$par_item_intercept
+  mod <- cmdstanr::cmdstan_model(
+    system.file("stan/par_item_intercept.stan", package = "pastasales")
+  )
   fit <- mod$sample(
     data = stan_data,
     iter_sampling = iter,
