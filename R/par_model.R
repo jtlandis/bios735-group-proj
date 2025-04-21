@@ -114,10 +114,13 @@ par_gradient <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
     }
 
     for (j in 1:p) {
-      grad_gamma[j] <- grad_gamma[j] + prefactor * (1 - sum(beta)) * x_t[j] * exp(linear_part)
+      grad_gamma[j] <- grad_gamma[j] +
+        prefactor * (1 - sum(beta)) * x_t[j] * exp(linear_part)
     }
   }
 
   grad <- c(beta = grad_beta, gamma = grad_gamma)
-  return(grad)
+  grad[!is.na(grad)]
 }
+
+
