@@ -50,3 +50,7 @@ rsconnect/
 
 *.Rproj
 inst/doc
+
+*.o
+*.so
+*.dll
