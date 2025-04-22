@@ -11,12 +11,105 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// get_mt_cpp
+NumericVector get_mt_cpp(const NumericVector& Y, const NumericMatrix& X, const NumericVector& beta, const NumericVector& gamma);
+RcppExport SEXP _pastasales_get_mt_cpp(SEXP YSEXP, SEXP XSEXP, SEXP betaSEXP, SEXP gammaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type gamma(gammaSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_mt_cpp(Y, X, beta, gamma));
+    return rcpp_result_gen;
+END_RCPP
+}
+// get_mt_grad_cpp
+NumericMatrix get_mt_grad_cpp(const NumericVector& Y, const NumericMatrix& X, const NumericVector& beta, const NumericVector& gamma);
+RcppExport SEXP _pastasales_get_mt_grad_cpp(SEXP YSEXP, SEXP XSEXP, SEXP betaSEXP, SEXP gammaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type gamma(gammaSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_mt_grad_cpp(Y, X, beta, gamma));
+    return rcpp_result_gen;
+END_RCPP
+}
+// loglik_cpp
+double loglik_cpp(const NumericVector& Y, const NumericMatrix& X, const NumericVector& beta, const NumericVector& gamma);
+RcppExport SEXP _pastasales_loglik_cpp(SEXP YSEXP, SEXP XSEXP, SEXP betaSEXP, SEXP gammaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type gamma(gammaSEXP);
+    rcpp_result_gen = Rcpp::wrap(loglik_cpp(Y, X, beta, gamma));
+    return rcpp_result_gen;
+END_RCPP
+}
+// loglik_grad_cpp
+NumericVector loglik_grad_cpp(const NumericVector& Y, const NumericMatrix& X, const NumericVector& beta, const NumericVector& gamma);
+RcppExport SEXP _pastasales_loglik_grad_cpp(SEXP YSEXP, SEXP XSEXP, SEXP betaSEXP, SEXP gammaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type gamma(gammaSEXP);
+    rcpp_result_gen = Rcpp::wrap(loglik_grad_cpp(Y, X, beta, gamma));
+    return rcpp_result_gen;
+END_RCPP
+}
+// proj_beta_cpp
+Rcpp::NumericVector proj_beta_cpp(Rcpp::NumericVector beta, double epsilon);
+RcppExport SEXP _pastasales_proj_beta_cpp(SEXP betaSEXP, SEXP epsilonSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< double >::type epsilon(epsilonSEXP);
+    rcpp_result_gen = Rcpp::wrap(proj_beta_cpp(beta, epsilon));
+    return rcpp_result_gen;
+END_RCPP
+}
+// proj_grad_descent_cpp
+Rcpp::List proj_grad_descent_cpp(const Rcpp::NumericVector& Y, const Rcpp::NumericMatrix& X, Rcpp::NumericVector beta0, Rcpp::NumericVector gamma0, double lr, int maxIter, double tol, bool return_allIters, bool verbose);
+RcppExport SEXP _pastasales_proj_grad_descent_cpp(SEXP YSEXP, SEXP XSEXP, SEXP beta0SEXP, SEXP gamma0SEXP, SEXP lrSEXP, SEXP maxIterSEXP, SEXP tolSEXP, SEXP return_allItersSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type beta0(beta0SEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type gamma0(gamma0SEXP);
+    Rcpp::traits::input_parameter< double >::type lr(lrSEXP);
+    Rcpp::traits::input_parameter< int >::type maxIter(maxIterSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< bool >::type return_allIters(return_allItersSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(proj_grad_descent_cpp(Y, X, beta0, gamma0, lr, maxIter, tol, return_allIters, verbose));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 RcppExport SEXP _rcpp_module_boot_stan_fit4par_item_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4par_item_intercept_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4vector_par_mod();
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_pastasales_get_mt_cpp", (DL_FUNC) &_pastasales_get_mt_cpp, 4},
+    {"_pastasales_get_mt_grad_cpp", (DL_FUNC) &_pastasales_get_mt_grad_cpp, 4},
+    {"_pastasales_loglik_cpp", (DL_FUNC) &_pastasales_loglik_cpp, 4},
+    {"_pastasales_loglik_grad_cpp", (DL_FUNC) &_pastasales_loglik_grad_cpp, 4},
+    {"_pastasales_proj_beta_cpp", (DL_FUNC) &_pastasales_proj_beta_cpp, 2},
+    {"_pastasales_proj_grad_descent_cpp", (DL_FUNC) &_pastasales_proj_grad_descent_cpp, 9},
     {"_rcpp_module_boot_stan_fit4par_item_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4par_item_mod, 0},
     {"_rcpp_module_boot_stan_fit4par_item_intercept_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4par_item_intercept_mod, 0},
     {"_rcpp_module_boot_stan_fit4vector_par_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4vector_par_mod, 0},
