@@ -272,3 +272,127 @@ par_hessian <- function(y, x, beta, gamma) {
 
   H
 }
+
+assert_no_dup_time <- function(data, time, .call = rlang::caller_env()) {
+  time <- enquo(time)
+  any_dup <- data |>
+    summarise(.dup = anyDuplicated(!!time), .groups = "drop")
+  if (any(any_dup$.dup)) {
+    if (ncol(any_dup) == 1) {
+      rlang::abort(
+        c(
+          sprintf(
+            "Duplicate times found in column `%s`",
+            rlang::as_label(time)
+          ),
+          "!" = "only one time point is permitted per group",
+          "i" = "consider subsetting your data, or use `dplyr::group_by(data, ...)`"
+        ),
+        call = .call
+      )
+    } else {
+      w <- filter(any_dup, .dup > 0) |> select(-.dup)
+      rlang::abort(
+        c(
+          "Duplicate times found in groups:",
+          {
+            w_names <- names(w)
+            seq_row <- seq_len(nrow(w))
+            l <- vapply(
+              seq_row,
+              function(i) {
+                paste0(w_names, ": ", unlist(w[i, ]), collapse = ", ")
+              },
+              character(1)
+            )
+            n <- length(l)
+            names(l) <- rep("*", n)
+            if (n < 4) {
+              l
+            } else {
+              c(l[1:3], "i" = paste0("... and ", n - 3, " more"))
+            }
+          },
+          "!" = "only one time point is permitted per group",
+          "i" = "consider subsetting your data, or use `dplyr::group_by(data, ...)`"
+        ),
+        call = .call
+      )
+    }
+  }
+  invisible(NULL)
+}
+
+# assume data is grouped...
+# mm_ <- par_model_mat(group_by(filter(data_set_tidy,brand %in% c("B1", "B2"), item %in% c("1","2")), brand, item), QTY ~ PROMO*(brand:item), time = DATE, nlag=4)
+# bfgs_cpp(mm_$Y, mm_$X, )
+
+#' Design matrix for analysis
+#' @export
+par_model_mat <- function(
+  data,
+  formula,
+  time = NULL,
+  nlag = 1
+) {
+  time <- rlang::enexpr(time)
+  q <- nlag
+  stopifnot(
+    rlang::is_formula(formula)
+  )
+  assert_no_dup_time(data, !!time)
+  y_sym <- rlang::f_lhs(formula)
+  covar <- rlang::f_rhs(formula)
+  seq_ <- seq_len(q)
+  lags <- setNames(seq_, sprintf("lag%i", seq_)) |>
+    lapply(function(l) expr(lag(!!y_sym, !!l)))
+  lag_names <- rlang::syms(names(lags))
+  # check if any duplicate times
+
+  data <- data |>
+    arrange(!!time) |>
+    mutate(!!!lags) |>
+    slice(-seq_len(.env$q))
+
+  lag_formula <- switch(
+    match(length(lag_names), c(0, 1, 2), nomatch = 4L),
+    NULL,
+    lag_names[[1]],
+    call("+", lag_names[[1]], lag_names[[2]]),
+    {
+      out <- call("+", lag_names[[1]], lag_names[[2]])
+      for (i in 3:length(lag_names)) {
+        out <- call("+", out, lag_names[[i]])
+      }
+      out
+    }
+  )
+
+  if (!is.null(lag_formula)) {
+    covar <- expr(!!lag_formula + !!covar)
+  }
+
+  formula2 <- expr(~!!covar)
+
+  X <- eval(
+    expr(
+      model.matrix(
+        object = !!formula2,
+        data = data
+      )
+    )
+  )
+  #insure
+  if ("(Intercept)" %in% colnames(X)) {
+    X <- X[, c(names(lags), colnames(X)[-which(colnames(X) %in% names(lags))])]
+  }
+  Y <- pull(data, !!y_sym)
+  xnames <- colnames(X)
+  list(
+    Y = Y,
+    X = X,
+    beta = setNames(rep(0, q), names(lags)),
+    gamma = setNames(rep(0, ncol(X) - q), xnames[-seq_len(q)]),
+    .data = data
+  )
+}
