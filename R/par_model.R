@@ -140,7 +140,8 @@ par_bfgs <- function(
   beta = numeric(0),
   gamma,
   max_iter = 1000,
-  trace_mod = 0
+  trace_mod = 0,
+  ...
 ) {
   q <- length(beta)
   p <- length(gamma)
@@ -168,8 +169,9 @@ par_bfgs <- function(
     x = x,
     H = par_hessian(y, x, beta, gamma) |> solve(),
     max_iter = max_iter,
-    step_size = 0.1,
-    trace_mod = trace_mod
+    trace_mod = trace_mod,
+    dynamic_steps = FALSE,
+    ...
   )
 }
 
