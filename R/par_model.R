@@ -14,11 +14,14 @@
 par_loglik <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
   T <- length(y)
   stopifnot(nrow(x) == T)
+  p <- length(gamma)
   if (length(gamma) == 0) gamma <- 0
   ll <- 0
-  for (t in (q + 1):T) {
-    y_lags <- y[(t - 1):(t - q)]
-    x_t <- x[t, ]
+  beta_seq <- seq_len(q)
+  gamma_seq <- seq_len(p) + q
+  for (t in seq_len(T)) {
+    y_lags <- x[t, beta_seq]
+    x_t <- x[t, gamma_seq]
 
     auto_part <- sum(beta * y_lags)
     linear_part <- mu + sum(x_t * gamma)
@@ -45,19 +48,20 @@ par_loglik <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
 #' @export
 fit_par_optim <- function(y, x, q = 1) {
   T <- length(y)
-  p <- ncol(x)
-
+  p <- ncol(x) - q
+  beta_seq <- seq_len(q)
+  gamma_seq <- seq_len(p) + q
   init <- c(rep(0.05, q), rep(0.01, p)) # beta + gamma
 
   nll <- function(par) {
-    beta <- par[1:q]
-    gamma <- par[(q + 1):(q + p)]
+    beta <- par[beta_seq]
+    gamma <- par[gamma_seq]
     -par_loglik(y, x, beta, gamma, mu = 0, q = q)
   }
 
   grad <- function(par) {
-    beta <- par[1:q]
-    gamma <- par[(q + 1):(q + p)]
+    beta <- par[beta_seq]
+    gamma <- par[gamma_seq]
     -par_gradient(y, x, beta, gamma, mu = 0, q = q)
   }
 
@@ -70,8 +74,8 @@ fit_par_optim <- function(y, x, q = 1) {
   )
 
   list(
-    beta = fit$par[1:q],
-    gamma = fit$par[(q + 1):(q + p)],
+    beta = fit$par[beta_seq],
+    gamma = fit$par[gamma_seq],
     loglik = -fit$value,
     converged = fit$convergence == 0,
     fit = fit
@@ -95,12 +99,20 @@ par_gradient <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
   T <- length(y)
   p <- length(gamma)
 
+  beta_seq <- seq_len(q)
+  gamma_seq <- seq_len(p) + q
+
   grad_beta <- rep(0, q)
   grad_gamma <- rep(0, p)
 
-  for (t in (q + 1):T) {
-    y_lags <- y[(t - 1):(t - q)]
-    x_t <- x[t, ]
+  grad <- c(
+    beta = grad_beta,
+    gamma = grad_gamma
+  )
+
+  for (t in seq_len(T)) {
+    y_lags <- x[t, beta_seq]
+    x_t <- x[t, gamma_seq]
     linear_part <- mu + sum(x_t * gamma)
 
     a_t <- sum(beta * y_lags)
@@ -109,21 +121,18 @@ par_gradient <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
 
     prefactor <- (y[t] / m_t) - 1
 
-    for (l in 1:q) {
-      grad_beta[l] <- grad_beta[l] + prefactor * (y[t - l] - exp(linear_part))
+    for (l in beta_seq) {
+      grad[l] <- grad[l] + prefactor * (y_lags[l] - exp(linear_part))
     }
 
-    for (j in 1:p) {
-      grad_gamma[j] <- grad_gamma[j] +
-        prefactor * (1 - sum(beta)) * x_t[j] * exp(linear_part)
+    for (j in gamma_seq) {
+      grad[j] <- grad[j] +
+        prefactor * (1 - sum(beta)) * x_t[j - q] * exp(linear_part)
     }
   }
 
-  grad <- c(beta = grad_beta, gamma = grad_gamma)
-  grad[!is.na(grad)]
+  grad
 }
-
-
 
 par_bfgs <- function(
   y,
