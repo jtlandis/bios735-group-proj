@@ -1,5 +1,6 @@
 
 #include <Rcpp.h>
+#include <Rmath.h>
 using namespace Rcpp;
 
 // [[Rcpp::export]]
@@ -15,17 +16,17 @@ NumericVector get_mt_cpp(const NumericVector& Y, const NumericMatrix& X,
   for (int i = 0; i < n; ++i) {
     double dot = 0.0;
     for (int j = 0; j < p; ++j) {
-      dot += X(i, j) * gamma[j];
+      dot += X(i, j + q) * gamma[j];
     }
     cov_parts[i] = std::exp(dot);
   }
 
   // Compute mt
   double sum_beta = std::accumulate(beta.begin(), beta.end(), 0.0);
-  for (int t = q; t < n; ++t) {
+  for (int t = 0; t < n; ++t) {
     double ar_term = 0.0;
     for (int l = 0; l < q; ++l) {
-      ar_term += beta[l] * Y[t - l - 1];
+      ar_term += beta[l] * X(t, l);
     }
     mt[t] = ar_term + (1.0 - sum_beta) * cov_parts[t];
   }
@@ -46,23 +47,23 @@ NumericMatrix get_mt_grad_cpp(const NumericVector& Y, const NumericMatrix& X,
   for (int i = 0; i < n; ++i) {
     double dot = 0.0;
     for (int j = 0; j < p; ++j) {
-      dot += X(i, j) * gamma[j];
+      dot += X(i, j + q) * gamma[j];
     }
     cov_parts[i] = std::exp(dot);
   }
 
   // Fill in gradients w.r.t. beta
   for (int l = 0; l < q; ++l) {
-    for (int t = q; t < n; ++t) {
-      grad_mt(t, l) = Y[t - l - 1] - cov_parts[t];
+    for (int t = 0; t < n; ++t) {
+      grad_mt(t, l) = X(t, l) - cov_parts[t];
     }
   }
 
   // Fill in gradients w.r.t. gamma
   double sum_beta = std::accumulate(beta.begin(), beta.end(), 0.0);
-  for (int t = q; t < n; ++t) {
+  for (int t = 0; t < n; ++t) {
     for (int j = 0; j < p; ++j) {
-      grad_mt(t, q + j) = (1.0 - sum_beta) * cov_parts[t] * X(t, j);
+      grad_mt(t, q + j) = (1.0 - sum_beta) * cov_parts[t] * X(t, q + j);
     }
   }
 
@@ -74,12 +75,12 @@ NumericMatrix get_mt_grad_cpp(const NumericVector& Y, const NumericMatrix& X,
 double loglik_cpp(const NumericVector& Y, const NumericMatrix& X,
                   const NumericVector& beta, const NumericVector& gamma) {
   int n = Y.size();
-  int q = beta.size();
+  //int q = beta.size();
   NumericVector mt = get_mt_cpp(Y, X, beta, gamma);
 
   double ll = 0.0;
-  for (int t = q; t < n; ++t) {
-    ll += Y[t] * std::log(mt[t]) - mt[t];
+  for (int t = 0; t < n; ++t) {
+    ll += Y[t] * std::log(mt[t]) - mt[t] - R::lgammafn(Y[t] + 1) ;
   }
   return ll;
 }
