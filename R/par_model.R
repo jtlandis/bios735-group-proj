@@ -167,7 +167,7 @@ par_bfgs <- function(
     g = grad,
     y = y,
     x = x,
-    H = par_hessian(y, x, beta, gamma) |> solve(),
+    H = diag(q + p), #par_hessian(y, x, beta, gamma) |> solve(),
     max_iter = max_iter,
     trace_mod = trace_mod,
     dynamic_steps = FALSE,
