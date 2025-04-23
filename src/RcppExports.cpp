@@ -11,6 +11,89 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// dnorm_vec_cpp
+double dnorm_vec_cpp(NumericVector x, NumericVector mu, NumericVector sigsq, bool log);
+RcppExport SEXP _pastasales_dnorm_vec_cpp(SEXP xSEXP, SEXP muSEXP, SEXP sigsqSEXP, SEXP logSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sigsq(sigsqSEXP);
+    Rcpp::traits::input_parameter< bool >::type log(logSEXP);
+    rcpp_result_gen = Rcpp::wrap(dnorm_vec_cpp(x, mu, sigsq, log));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rdirichlet_cpp
+NumericVector rdirichlet_cpp(NumericVector alpha_m);
+RcppExport SEXP _pastasales_rdirichlet_cpp(SEXP alpha_mSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type alpha_m(alpha_mSEXP);
+    rcpp_result_gen = Rcpp::wrap(rdirichlet_cpp(alpha_m));
+    return rcpp_result_gen;
+END_RCPP
+}
+// ddirichlet_cpp
+double ddirichlet_cpp(NumericVector x, NumericVector alpha, bool log);
+RcppExport SEXP _pastasales_ddirichlet_cpp(SEXP xSEXP, SEXP alphaSEXP, SEXP logSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< bool >::type log(logSEXP);
+    rcpp_result_gen = Rcpp::wrap(ddirichlet_cpp(x, alpha, log));
+    return rcpp_result_gen;
+END_RCPP
+}
+// get_fit_par_cpp
+NumericVector get_fit_par_cpp(const NumericVector& Y, const NumericMatrix& X, const NumericVector& beta, const NumericVector& gamma);
+RcppExport SEXP _pastasales_get_fit_par_cpp(SEXP YSEXP, SEXP XSEXP, SEXP betaSEXP, SEXP gammaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type gamma(gammaSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_fit_par_cpp(Y, X, beta, gamma));
+    return rcpp_result_gen;
+END_RCPP
+}
+// loglik_par_cpp
+double loglik_par_cpp(const NumericVector& Y, const NumericMatrix& X, const NumericVector& beta, const NumericVector& gamma);
+RcppExport SEXP _pastasales_loglik_par_cpp(SEXP YSEXP, SEXP XSEXP, SEXP betaSEXP, SEXP gammaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< const NumericVector& >::type gamma(gammaSEXP);
+    rcpp_result_gen = Rcpp::wrap(loglik_par_cpp(Y, X, beta, gamma));
+    return rcpp_result_gen;
+END_RCPP
+}
+// run_mcmc_par_cpp
+List run_mcmc_par_cpp(const NumericVector& Y, const NumericMatrix& X, int q, int n_iter, Nullable<List> hyperparams, double proposal_sd, bool verbose);
+RcppExport SEXP _pastasales_run_mcmc_par_cpp(SEXP YSEXP, SEXP XSEXP, SEXP qSEXP, SEXP n_iterSEXP, SEXP hyperparamsSEXP, SEXP proposal_sdSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    Rcpp::traits::input_parameter< int >::type n_iter(n_iterSEXP);
+    Rcpp::traits::input_parameter< Nullable<List> >::type hyperparams(hyperparamsSEXP);
+    Rcpp::traits::input_parameter< double >::type proposal_sd(proposal_sdSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(run_mcmc_par_cpp(Y, X, q, n_iter, hyperparams, proposal_sd, verbose));
+    return rcpp_result_gen;
+END_RCPP
+}
 // get_mt_cpp
 NumericVector get_mt_cpp(const NumericVector& Y, const NumericMatrix& X, const NumericVector& beta, const NumericVector& gamma);
 RcppExport SEXP _pastasales_get_mt_cpp(SEXP YSEXP, SEXP XSEXP, SEXP betaSEXP, SEXP gammaSEXP) {
@@ -104,6 +187,12 @@ RcppExport SEXP _rcpp_module_boot_stan_fit4par_item_intercept_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4vector_par_mod();
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_pastasales_dnorm_vec_cpp", (DL_FUNC) &_pastasales_dnorm_vec_cpp, 4},
+    {"_pastasales_rdirichlet_cpp", (DL_FUNC) &_pastasales_rdirichlet_cpp, 1},
+    {"_pastasales_ddirichlet_cpp", (DL_FUNC) &_pastasales_ddirichlet_cpp, 3},
+    {"_pastasales_get_fit_par_cpp", (DL_FUNC) &_pastasales_get_fit_par_cpp, 4},
+    {"_pastasales_loglik_par_cpp", (DL_FUNC) &_pastasales_loglik_par_cpp, 4},
+    {"_pastasales_run_mcmc_par_cpp", (DL_FUNC) &_pastasales_run_mcmc_par_cpp, 7},
     {"_pastasales_get_mt_cpp", (DL_FUNC) &_pastasales_get_mt_cpp, 4},
     {"_pastasales_get_mt_grad_cpp", (DL_FUNC) &_pastasales_get_mt_grad_cpp, 4},
     {"_pastasales_loglik_cpp", (DL_FUNC) &_pastasales_loglik_cpp, 4},

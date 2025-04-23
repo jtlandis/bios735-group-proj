@@ -2,8 +2,10 @@
 
 export(beta_mat)
 export(fit_all_items)
+export(fit_par_grad_descent)
 export(fit_par_item)
 export(fit_par_item_int)
+export(fit_par_mcmc)
 export(fit_par_optim)
 export(fit_vector_par_stan)
 export(ll)
