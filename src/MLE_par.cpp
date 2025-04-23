@@ -147,6 +147,230 @@ Rcpp::NumericVector proj_beta_cpp(Rcpp::NumericVector beta, double epsilon = 1e-
   return beta_proj;
 }
 
+Rcpp::NumericVector grad_direc(
+  const Rcpp::NumericMatrix& H,
+  Rcpp::NumericVector& grad
+) {
+  int n = grad.size();
+  Rcpp::NumericVector direc(n);
+  for (int i = 0; i < n; ++i) {
+    double dot = 0.0;
+    for (int j = 0; j < n; ++j) {
+      dot += H(i, j) * grad[j];
+    }
+    direc[i] = -dot;
+  }
+  return direc;
+}
+
+  // assume x and y are the same size
+  // skips some steps
+NumericMatrix simple_dot(const NumericVector& x, const NumericVector& y, double div) {
+  int n = x.size();
+  NumericMatrix result(n, n);
+
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < n; j++) {
+      result(i, j) = - x[i] * y[j] / div;
+    }
+  }
+
+  return result;
+}
+
+void update_H(
+  NumericMatrix& H,
+  const Rcpp::NumericVector& step,
+  const Rcpp::NumericVector& diff) {
+  int n = step.size();
+  double yts = 0;
+  for (int i = 0; i < n; i++) {
+    yts += diff[i] * step[i];
+  }
+  NumericMatrix left = simple_dot(step, diff, yts);
+  NumericMatrix right = simple_dot(diff, step, yts);
+  NumericMatrix sst = simple_dot(step, step, yts);
+
+  // simulate I - M
+  for (int i = 0; i < n; i++) {
+    left(i, i) += 1;
+    right(i, i) += 1;
+  }
+
+  NumericMatrix H_new(n);
+
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < n; j++) {
+      NumericVector row = left(i, _);
+      NumericVector col = H(_, j);
+      H_new(i, j) = sum(row * col);
+    }
+  }
+
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < n; j++) {
+      NumericVector row = H_new(i, _);
+      NumericVector col = right(_, j);
+      H(i, j) = sum(row * col) + sst(i, j);
+    }
+  }
+
+}
+
+
+    // double line_search_cpp(const Rcpp::NumericVector& Y,
+    //                        const Rcpp::NumericMatrix& X,
+    //                        const Rcpp::NumericVector& beta,
+    //                        const Rcpp::NumericVector& gamma,
+    //                        const Rcpp::NumericVector& direc,
+    //                        double& f,
+    //                        double alpha = 1) {
+    //   double step = alpha;
+    //   f = -loglik_cpp(Y, X, beta, gamma);
+    //   double c = 1e-4; // Armijo condition constant
+    //   double tau = 0.5; // Step size reduction factor
+
+    //   Rcpp::NumericVector beta_new = clone(beta);
+    //   Rcpp::NumericVector gamma_new = clone(gamma);
+    //   int q = beta.size();
+    //   Rcpp::Range beta_slice = Rcpp::Range(0, q - 1);
+    //   Rcpp::Range gamma_slice = Rcpp::Range(q, direc.size() - 1);
+    //   Rcpp::NumericVector grand_beta = direc[beta_slice];
+    //   Rcpp::NumericVector grand_gamma = direc[gamma_slice];
+
+    //   Rcpp::NumericVector grad = -loglik_grad_cpp(Y, X, beta, gamma);
+    //   double grad_dot_direc = Rcpp::sum(grad * direc);
+
+    //   while (abs(step) > 1e-8) {
+    //     beta_new = beta + step * grand_beta;
+    //     gamma_new = gamma + step * grand_gamma;
+    //     double f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+    //     Rcout << f_new << " step " << step <<"\n";
+    //     if (f_new <= f + c * step * grad_dot_direc) {
+    //       return step;
+    //     }
+
+    //     step *= tau;
+    //   }
+
+    //   return step;
+    // }
+
+double line_search_cpp2(const Rcpp::NumericVector& Y,
+                       const Rcpp::NumericMatrix& X,
+                       const Rcpp::NumericVector& beta,
+                       const Rcpp::NumericVector& gamma,
+                       const Rcpp::NumericVector& direc,
+                       double alpha = 1) {
+  const double alphas[18] = {
+    -0.000000001,
+    -0.00000001,
+    -0.0000001,
+    -0.000001,
+    -0.00001,
+    -0.0001,
+    -0.001,
+    -0.01,
+    -0.1,
+     0.1,
+     0.01,
+     0.001,
+     0.0001,
+     0.00001,
+     0.000001,
+     0.0000001,
+     0.00000001,
+     0.000000001
+  };
+
+  int index = 0;
+  double objective = INFINITY;
+  int n = 18;
+  int q = beta.size();
+  Rcpp::NumericVector beta_new = clone(beta);
+  Rcpp::NumericVector gamma_new = clone(gamma);
+  Rcpp::Range beta_slice = Rcpp::Range(0, q - 1);
+  Rcpp::Range gamma_slice = Rcpp::Range(q, direc.size() - 1);
+  Rcpp::NumericVector grand_beta = direc[beta_slice];
+  Rcpp::NumericVector grand_gamma = direc[gamma_slice];
+
+  for (int i = 0; i<n; i++) {
+    double step = alphas[i];
+    beta_new = beta + step * grand_beta;
+    gamma_new = gamma + step * grand_gamma;
+    double f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+    if (f_new < objective) {
+      index = i;
+      objective = f_new;
+    }
+  }
+  return alphas[index];
+}
+
+
+// [[Rcpp::export]]
+Rcpp::List bfgs_cpp(
+  const Rcpp::NumericVector& Y,
+  const Rcpp::NumericMatrix& X,
+  Rcpp::NumericVector beta0,
+  Rcpp::NumericVector gamma0,
+  int maxIter = 100,
+  double tol = 1e-5
+) {
+
+  NumericVector beta = clone(beta0);
+  NumericVector gamma = clone(gamma0);
+  int q = beta0.size();
+  int p = gamma0.size();
+  double f = -loglik_cpp(Y, X, beta, gamma);
+  double ep = INFINITY;
+  int iter = 1;
+  Rcpp::Range beta_slice = Rcpp::Range(0, q - 1);
+  Rcpp::Range gamma_slice = Rcpp::Range(q, p + q - 1);
+  NumericMatrix H = NumericMatrix::diag(p + q, 1.0);
+  Rcpp::NumericVector grad = -loglik_grad_cpp(Y, X, beta, gamma);
+  double step = 0;
+  while (ep > tol && iter <= maxIter) {
+
+    Rcpp::NumericVector direc = grad_direc(H, grad);
+    // double f_pos = 0;
+    // double step_pos = line_search_cpp(Y, X, beta, gamma, direc, f_pos);
+    // double f_neg = 0;
+    // double step_neg = line_search_cpp(Y, X, beta, gamma, direc, f_neg, -1);
+    // if (f_pos < f_neg) {
+    //   step = step_pos;
+    // } else {
+    //   step = step_neg;
+    // }
+    step = line_search_cpp2(Y, X, beta, gamma, direc);
+    Rcout << "Step size: " << step << " direction: " << direc << "\n";
+    direc = direc * step;
+    beta += direc[beta_slice];
+    gamma += direc[gamma_slice];
+    Rcpp::NumericVector grad_new = -loglik_grad_cpp(Y, X, beta, gamma);
+    Rcpp::NumericVector grad_diff = grad_new - grad;
+    update_H(H, direc, grad_diff);
+    double f_new = -loglik_cpp(Y, X, beta, gamma);
+    ep = std::abs(f_new - f);
+    f = f_new;
+    grad = grad_new;
+    Rcout << "Iteration: " << iter << ", eps: " << ep << ", ll: " << f << ", beta: " << beta << ", gamma: " << gamma << "\n";
+    iter++;
+  }
+
+  return Rcpp::List::create(
+    Rcpp::Named("beta") = beta,
+    Rcpp::Named("gamma") = gamma
+  );
+}
+
+
+
+
+
+
+
+
 
 // [[Rcpp::export]]
 Rcpp::List proj_grad_descent_cpp(const Rcpp::NumericVector& Y,
