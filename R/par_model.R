@@ -458,7 +458,7 @@ par_model_mat <- function(
     names(gamma) <- colnames(X)
   }
   Y <- pull(data, !!y_sym)
-  attr(X, ".non_empty") <- apply(X, 2, function(x) which(x != 0))
+  attr(X, ".non_empty") <- apply(X, 2, function(x) which(x != 0) - 1L)
   list(
     Y = Y,
     X = X,
