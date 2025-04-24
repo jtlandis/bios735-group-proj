@@ -97,7 +97,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // bfgs_cpp2
-Rcpp::List bfgs_cpp2(const Rcpp::NumericVector& Y, const Rcpp::NumericMatrix& X, Rcpp::NumericVector beta0, Rcpp::NumericVector gamma0, int maxIter, double tol, bool verbose);
+Rcpp::List bfgs_cpp2(const Rcpp::NumericVector& Y, const Rcpp::NumericMatrix& X, Rcpp::NumericVector beta0, Rcpp::NumericVector gamma0, int maxIter, double tol, int verbose);
 RcppExport SEXP _pastasales_bfgs_cpp2(SEXP YSEXP, SEXP XSEXP, SEXP beta0SEXP, SEXP gamma0SEXP, SEXP maxIterSEXP, SEXP tolSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -108,7 +108,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type gamma0(gamma0SEXP);
     Rcpp::traits::input_parameter< int >::type maxIter(maxIterSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
     rcpp_result_gen = Rcpp::wrap(bfgs_cpp2(Y, X, beta0, gamma0, maxIter, tol, verbose));
     return rcpp_result_gen;
 END_RCPP

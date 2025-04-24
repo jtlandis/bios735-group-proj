@@ -1,5 +1,5 @@
 
-#include <Rcpp.h>
+#include <RcppEigen.h>
 #include <Rmath.h>
 using namespace Rcpp;
 
@@ -208,11 +208,40 @@ Rcpp::NumericVector grad_direc(
   return direc;
 }
 
+Rcpp::NumericVector grad_direc2(
+  const Eigen::MatrixXd& H,
+  Rcpp::NumericVector& grad
+) {
+  int n = grad.size();
+  Rcpp::NumericVector direc(n);
+  for (int i = 0; i < n; ++i) {
+    double dot = 0.0;
+    for (int j = 0; j < n; ++j) {
+      dot += H(i, j) * grad[j];
+    }
+    direc[i] = -dot;
+  }
+  return direc;
+}
+
   // assume x and y are the same size
   // skips some steps
 NumericMatrix simple_dot(const NumericVector& x, const NumericVector& y, double div) {
   int n = x.size();
   NumericMatrix result(n, n);
+
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < n; j++) {
+      result(i, j) = - x[i] * y[j] / div;
+    }
+  }
+
+  return result;
+}
+
+Eigen::MatrixXd simple_dot2(const NumericVector& x, const NumericVector& y, double div) {
+  int n = x.size();
+  Eigen::MatrixXd result(n, n);
 
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < n; j++) {
@@ -259,6 +288,30 @@ void update_H(
       H(i, j) = sum(row * col) + sst(i, j);
     }
   }
+
+}
+
+Eigen::MatrixXd update_H2(
+  Eigen::MatrixXd& H,
+  const Rcpp::NumericVector& step,
+  const Rcpp::NumericVector& diff) {
+  int n = step.size();
+  double yts = 0;
+  for (int i = 0; i < n; i++) {
+    yts += diff[i] * step[i];
+  }
+
+  Eigen::MatrixXd left = simple_dot2(step, diff, yts);
+  Eigen::MatrixXd right = simple_dot2(diff, step, yts);
+  Eigen::MatrixXd sst = simple_dot2(step, step, yts);
+
+  // simulate I - M
+  for (int i = 0; i < n; i++) {
+    left(i, i) += 1;
+    right(i, i) += 1;
+  }
+
+  return left * H * right;
 
 }
 
@@ -619,7 +672,7 @@ Rcpp::List bfgs_cpp2(
   Rcpp::NumericVector gamma0,
   int maxIter = 100,
   double tol = 1e-5,
-  bool verbose = false
+  int verbose = 0
 ) {
 
   NumericVector beta = clone(beta0);
@@ -633,25 +686,33 @@ Rcpp::List bfgs_cpp2(
   int alpha_index = 0;
   Rcpp::Range beta_slice = Rcpp::Range(0, q - 1);
   Rcpp::Range gamma_slice = Rcpp::Range(q, p + q - 1);
-  NumericMatrix H = NumericMatrix::diag(p + q, 1.0);
+  Eigen::MatrixXd H = Eigen::MatrixXd::Identity(p + q, p + q);
+  // NumericMatrix H = NumericMatrix::diag(p + q, 1.0);
   Rcpp::NumericVector grad = -loglik_grad_cpp(Y, X, beta, gamma);
   double step = 0;
   while (ep > tol && iter <= maxIter) {
 
-    Rcpp::NumericVector direc = grad_direc(H, grad);
+    Rcpp::NumericVector direc = grad_direc2(H, grad);
     step = line_search_cpp3(Y, X, beta, gamma, direc, alpha_index, objective);
-    if (verbose) Rcout << "Step size: " << step << " direction: " << direc << "\n";
+    // if (verbose) Rcout << " direction: " << direc << "\n";
     direc = direc * step;
     beta += direc[beta_slice];
     gamma += direc[gamma_slice];
     Rcpp::NumericVector grad_new = -loglik_grad_cpp(Y, X, beta, gamma);
     Rcpp::NumericVector grad_diff = grad_new - grad;
-    update_H(H, direc, grad_diff);
+    H = update_H2(H, direc, grad_diff);
     //double f_new = -loglik_cpp(Y, X, beta, gamma);
     ep = std::abs(objective - old_objective);
     old_objective = objective;
     grad = grad_new;
-    if (verbose) Rcout << "Iteration: " << iter << ", eps: " << ep << ", ll: " << objective << ", beta: " << beta << ", gamma: " << gamma << "\n";
+    if (verbose) {
+      Rcout << "Iteration: " << iter << ", Step size: " << step << ", eps: " << ep << ", ll: " << objective;
+      if (verbose > 1) {
+        Rcout << ", beta: " << beta << ", gamma: " << gamma;
+      }
+      Rcout << "\n";
+    }
+
     iter++;
   }
 

@@ -25,7 +25,7 @@ bfgs_cpp <- function(Y, X, beta0, gamma0, maxIter = 100L, tol = 1e-5, verbose = 
     .Call(`_pastasales_bfgs_cpp`, Y, X, beta0, gamma0, maxIter, tol, verbose)
 }
 
-bfgs_cpp2 <- function(Y, X, beta0, gamma0, maxIter = 100L, tol = 1e-5, verbose = FALSE) {
+bfgs_cpp2 <- function(Y, X, beta0, gamma0, maxIter = 100L, tol = 1e-5, verbose = 0L) {
     .Call(`_pastasales_bfgs_cpp2`, Y, X, beta0, gamma0, maxIter, tol, verbose)
 }
 
