@@ -611,6 +611,57 @@ Rcpp::List bfgs_cpp(
   );
 }
 
+// [[Rcpp::export]]
+Rcpp::List bfgs_cpp2(
+  const Rcpp::NumericVector& Y,
+  const Rcpp::NumericMatrix& X,
+  Rcpp::NumericVector beta0,
+  Rcpp::NumericVector gamma0,
+  int maxIter = 100,
+  double tol = 1e-5,
+  bool verbose = false
+) {
+
+  NumericVector beta = clone(beta0);
+  NumericVector gamma = clone(gamma0);
+  int q = beta0.size();
+  int p = gamma0.size();
+  double objective = -loglik_cpp(Y, X, beta, gamma);
+  double old_objective = objective;
+  double ep = INFINITY;
+  int iter = 1;
+  int alpha_index = 0;
+  Rcpp::Range beta_slice = Rcpp::Range(0, q - 1);
+  Rcpp::Range gamma_slice = Rcpp::Range(q, p + q - 1);
+  NumericMatrix H = NumericMatrix::diag(p + q, 1.0);
+  Rcpp::NumericVector grad = -loglik_grad_cpp(Y, X, beta, gamma);
+  double step = 0;
+  while (ep > tol && iter <= maxIter) {
+
+    Rcpp::NumericVector direc = grad_direc(H, grad);
+    step = line_search_cpp3(Y, X, beta, gamma, direc, alpha_index, objective);
+    if (verbose) Rcout << "Step size: " << step << " direction: " << direc << "\n";
+    direc = direc * step;
+    beta += direc[beta_slice];
+    gamma += direc[gamma_slice];
+    Rcpp::NumericVector grad_new = -loglik_grad_cpp(Y, X, beta, gamma);
+    Rcpp::NumericVector grad_diff = grad_new - grad;
+    update_H(H, direc, grad_diff);
+    //double f_new = -loglik_cpp(Y, X, beta, gamma);
+    ep = std::abs(objective - old_objective);
+    old_objective = objective;
+    grad = grad_new;
+    if (verbose) Rcout << "Iteration: " << iter << ", eps: " << ep << ", ll: " << objective << ", beta: " << beta << ", gamma: " << gamma << "\n";
+    iter++;
+  }
+
+
+  return Rcpp::List::create(
+    Rcpp::Named("beta") = beta,
+    Rcpp::Named("gamma") = gamma
+  );
+}
+
 
 
 
