@@ -134,6 +134,71 @@ par_gradient <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
   grad
 }
 
+#' Fit PAR Model Using Gradient Descent
+#'
+#' Fit a non-hierarchical PAR model using maximum likelihood via projected gradient descent algorithm
+#'
+#' @param y Vector of counts
+#' @param x Matrix of covariates (T × p). Include column of ones for intercept
+#' @param q Number of lags
+#' @param initial_vals Default NULL. Can be specified as a named list of parameter starting values, e.g. list(beta = rep(0,q), gamma = rep(0,p))
+#' @param lr Learning rate for gradient descent (default = 1e-4)
+#' @param maxIter Maximum iterations for gradient descent (default 5000)
+#' @param tol Tolerance for gradient descent (default 1e-8)
+#' @param return_allIters Default FALSE. Set TRUE to return all iterations from gradient descent
+#' @param verbose Default FALSE. Set TRUE to print iterations while running
+#'
+#' @return A list with estimated parameters, log-likelihood, and convergence measure (epsilon)
+#' @export
+fit_par_grad_descent <- function(y, x, q = 1, initial_vals = NULL, lr = 1e-4, maxIter = 5000, tol = 1e-8, return_allIters = FALSE, verbose = FALSE) {
+  p <- ncol(x)
+  beta0 <- rep(0, q)
+  gamma0 <- rep(0, p)
+  if (!is.null(initial_vals) & all(c("beta", "gamma") %in% names(initial_vals))) {
+    beta0 <- initial_vals$beta
+    gamma0 <- initial_vals$gamma
+  }
+  fit <- proj_grad_descent_cpp(y, x, beta0, gamma0, lr, maxIter, tol, return_allIters, verbose)
+  ll <- par_loglik(y, x, fit$beta, fit$gamma)
+  
+  list(
+    beta = fit$beta,
+    gamma = fit$gamma,
+    loglik = ll,
+    epsilon = fit$epsilon
+  )
+}
+
+#' Fit PAR Model Using MCMC
+#'
+#' Fit a non-hierarchical PAR model using MCMC (Metropolis-within-Gibbs sampler)
+#'
+#' @param y Vector of counts
+#' @param x Matrix of covariates (T × p). Include column of ones for intercept
+#' @param q Number of lags
+#' @param mcmc_iter Number of iterations for MCMC. Default 5000
+#' @param burn_in Proportion of burn-in samples for computing parameter estimates (default 0.5)
+#' @param hyperparams Default NULL. Can be specified as named list of hyperparameters
+#' @param proposal_sd Default 0.05. Standard deviation for Metropolis-Hasting proposal density
+#' @param return_mcmc Default TRUE. Set FALSE to only return point estimates without MCMC samples
+#' @param verbose Default FALSE. Set TRUE to print iterations while running
+#'
+#' @return A list with estimated parameters, log-likelihood, and (optionally) MCMC samples
+#' @export
+fit_par_mcmc <- function(y, x, q = 1, mcmc_iter = 5000, burn_in = 0.5, hyperparams = NULL, proposal_sd = 0.05, return_mcmc = TRUE, verbose = FALSE) {
+  mcmc <- run_mcmc_par_cpp(y, x, q, n_iter = mcmc_iter, hyperparams = hyperparams, proposal_sd = proposal_sd, verbose = verbose)
+  
+  ss <- round(burn_in * mcmc_iter):mcmc_iter
+  beta_est <- colMeans(mcmc$beta[ss,,drop=F])
+  gamma_est <- colMeans(mcmc$gamma[ss,,drop=F])
+  ll <- par_loglik(y, x, beta_est, gamma_est)
+  
+  if (return_mcmc == T) res <- list(beta = beta_est, gamma = gamma_est, loglik = ll, mcmc_samps = mcmc)
+  if (return_mcmc == F) res <- list(beta = beta_est, gamma = gamma_est, loglik = ll)
+  
+  res
+}
+
 par_bfgs <- function(
   y,
   x,

@@ -793,12 +793,14 @@ Rcpp::List proj_grad_descent_cpp(const Rcpp::NumericVector& Y,
       Rcpp::Named("beta") = beta,
       Rcpp::Named("gamma") = gamma,
       Rcpp::Named("beta_iters") = beta_iters,
-      Rcpp::Named("gamma_iters") = gamma_iters
+      Rcpp::Named("gamma_iters") = gamma_iters,
+      Rcpp::Named("epsilon") = ep
     );
   } else {
     return Rcpp::List::create(
       Rcpp::Named("beta") = beta,
-      Rcpp::Named("gamma") = gamma
+      Rcpp::Named("gamma") = gamma,
+      Rcpp::Named("epsilon") = ep
     );
   }
 }

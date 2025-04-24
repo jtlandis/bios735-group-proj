@@ -11,9 +11,7 @@ general_bfgs(
   ...,
   H = diag(length(params)),
   max_iter = 1000,
-  trace_mod = 1,
-  step_size = 0.1,
-  dynamic_steps = TRUE
+  trace_mod = 1
 )
 }
 \arguments{
