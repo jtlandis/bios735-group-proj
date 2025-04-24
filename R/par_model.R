@@ -150,15 +150,37 @@ par_gradient <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
 #'
 #' @return A list with estimated parameters, log-likelihood, and convergence measure (epsilon)
 #' @export
-fit_par_grad_descent <- function(y, x, q = 1, initial_vals = NULL, lr = 1e-4, maxIter = 5000, tol = 1e-8, return_allIters = FALSE, verbose = FALSE) {
+fit_par_grad_descent <- function(
+  y,
+  x,
+  q = 1,
+  initial_vals = NULL,
+  lr = 1e-4,
+  maxIter = 5000,
+  tol = 1e-8,
+  return_allIters = FALSE,
+  verbose = FALSE
+) {
   p <- ncol(x)
   beta0 <- rep(0, q)
   gamma0 <- rep(0, p)
-  if (!is.null(initial_vals) & all(c("beta", "gamma") %in% names(initial_vals))) {
+  if (
+    !is.null(initial_vals) & all(c("beta", "gamma") %in% names(initial_vals))
+  ) {
     beta0 <- initial_vals$beta
     gamma0 <- initial_vals$gamma
   }
-  fit <- proj_grad_descent_cpp(y, x, beta0, gamma0, lr, maxIter, tol, return_allIters, verbose)
+  fit <- proj_grad_descent_cpp(
+    y,
+    x,
+    beta0,
+    gamma0,
+    lr,
+    maxIter,
+    tol,
+    return_allIters,
+    verbose
+  )
   ll <- par_loglik(y, x, fit$beta, fit$gamma)
 
   list(
@@ -185,17 +207,42 @@ fit_par_grad_descent <- function(y, x, q = 1, initial_vals = NULL, lr = 1e-4, ma
 #'
 #' @return A list with estimated parameters, log-likelihood, and (optionally) MCMC samples
 #' @export
-fit_par_mcmc <- function(y, x, q = 1, mcmc_iter = 5000, burn_in = 0.5, hyperparams = NULL, proposal_sd = 0.05, return_mcmc = TRUE, verbose = FALSE) {
-  mcmc <- run_mcmc_par_cpp(y, x, q, n_iter = mcmc_iter, hyperparams = hyperparams, proposal_sd = proposal_sd, verbose = verbose)
-  
+fit_par_mcmc <- function(
+  y,
+  x,
+  q = 1,
+  mcmc_iter = 5000,
+  burn_in = 0.5,
+  hyperparams = NULL,
+  proposal_sd = 0.05,
+  return_mcmc = TRUE,
+  verbose = FALSE
+) {
+  mcmc <- run_mcmc_par_cpp(
+    y,
+    x,
+    q,
+    n_iter = mcmc_iter,
+    hyperparams = hyperparams,
+    proposal_sd = proposal_sd,
+    verbose = verbose
+  )
+
   ss <- round(burn_in * mcmc_iter):mcmc_iter
-  beta_est <- colMeans(mcmc$beta[ss,,drop=F])
-  gamma_est <- colMeans(mcmc$gamma[ss,,drop=F])
+  beta_est <- colMeans(mcmc$beta[ss, , drop = F])
+  gamma_est <- colMeans(mcmc$gamma[ss, , drop = F])
   ll <- par_loglik(y, x, beta_est, gamma_est)
-  
-  if (return_mcmc == T) res <- list(beta = beta_est, gamma = gamma_est, loglik = ll, mcmc_samps = mcmc)
-  if (return_mcmc == F) res <- list(beta = beta_est, gamma = gamma_est, loglik = ll)
-  
+
+  if (return_mcmc == T)
+    res <- list(
+      beta = beta_est,
+      gamma = gamma_est,
+      loglik = ll,
+      mcmc_samps = mcmc
+    )
+  if (return_mcmc == F)
+    res <- list(beta = beta_est, gamma = gamma_est, loglik = ll)
+
   res
 }
 
