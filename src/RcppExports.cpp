@@ -80,8 +80,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // bfgs_cpp
-Rcpp::List bfgs_cpp(const Rcpp::NumericVector& Y, const Rcpp::NumericMatrix& X, Rcpp::NumericVector beta0, Rcpp::NumericVector gamma0, int maxIter, double tol);
-RcppExport SEXP _pastasales_bfgs_cpp(SEXP YSEXP, SEXP XSEXP, SEXP beta0SEXP, SEXP gamma0SEXP, SEXP maxIterSEXP, SEXP tolSEXP) {
+Rcpp::List bfgs_cpp(const Rcpp::NumericVector& Y, const Rcpp::NumericMatrix& X, Rcpp::NumericVector beta0, Rcpp::NumericVector gamma0, int maxIter, double tol, bool verbose);
+RcppExport SEXP _pastasales_bfgs_cpp(SEXP YSEXP, SEXP XSEXP, SEXP beta0SEXP, SEXP gamma0SEXP, SEXP maxIterSEXP, SEXP tolSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -91,7 +91,25 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type gamma0(gamma0SEXP);
     Rcpp::traits::input_parameter< int >::type maxIter(maxIterSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    rcpp_result_gen = Rcpp::wrap(bfgs_cpp(Y, X, beta0, gamma0, maxIter, tol));
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(bfgs_cpp(Y, X, beta0, gamma0, maxIter, tol, verbose));
+    return rcpp_result_gen;
+END_RCPP
+}
+// bfgs_cpp2
+Rcpp::List bfgs_cpp2(const Rcpp::NumericVector& Y, const Rcpp::NumericMatrix& X, Rcpp::NumericVector beta0, Rcpp::NumericVector gamma0, int maxIter, double tol, bool verbose);
+RcppExport SEXP _pastasales_bfgs_cpp2(SEXP YSEXP, SEXP XSEXP, SEXP beta0SEXP, SEXP gamma0SEXP, SEXP maxIterSEXP, SEXP tolSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type beta0(beta0SEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type gamma0(gamma0SEXP);
+    Rcpp::traits::input_parameter< int >::type maxIter(maxIterSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(bfgs_cpp2(Y, X, beta0, gamma0, maxIter, tol, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -125,7 +143,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_pastasales_loglik_cpp", (DL_FUNC) &_pastasales_loglik_cpp, 4},
     {"_pastasales_loglik_grad_cpp", (DL_FUNC) &_pastasales_loglik_grad_cpp, 4},
     {"_pastasales_proj_beta_cpp", (DL_FUNC) &_pastasales_proj_beta_cpp, 2},
-    {"_pastasales_bfgs_cpp", (DL_FUNC) &_pastasales_bfgs_cpp, 6},
+    {"_pastasales_bfgs_cpp", (DL_FUNC) &_pastasales_bfgs_cpp, 7},
+    {"_pastasales_bfgs_cpp2", (DL_FUNC) &_pastasales_bfgs_cpp2, 7},
     {"_pastasales_proj_grad_descent_cpp", (DL_FUNC) &_pastasales_proj_grad_descent_cpp, 9},
     {"_rcpp_module_boot_stan_fit4par_item_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4par_item_mod, 0},
     {"_rcpp_module_boot_stan_fit4par_item_intercept_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4par_item_intercept_mod, 0},
