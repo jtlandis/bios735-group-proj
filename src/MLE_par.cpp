@@ -323,7 +323,8 @@ Rcpp::List bfgs_cpp(
   Rcpp::NumericVector beta0,
   Rcpp::NumericVector gamma0,
   int maxIter = 100,
-  double tol = 1e-5
+  double tol = 1e-5,
+  bool verbose = false
 ) {
 
   NumericVector beta = clone(beta0);
@@ -343,7 +344,7 @@ Rcpp::List bfgs_cpp(
     Rcpp::NumericVector direc = grad_direc(H, grad);
 
     step = line_search_cpp2(Y, X, beta, gamma, direc);
-    Rcout << "Step size: " << step << " direction: " << direc << "\n";
+    if (verbose) Rcout << "Step size: " << step << " direction: " << direc << "\n";
     direc = direc * step;
     beta += direc[beta_slice];
     gamma += direc[gamma_slice];
@@ -354,7 +355,7 @@ Rcpp::List bfgs_cpp(
     ep = std::abs(f_new - f);
     f = f_new;
     grad = grad_new;
-    Rcout << "Iteration: " << iter << ", eps: " << ep << ", ll: " << f << ", beta: " << beta << ", gamma: " << gamma << "\n";
+    if (verbose) Rcout << "Iteration: " << iter << ", eps: " << ep << ", ll: " << f << ", beta: " << beta << ", gamma: " << gamma << "\n";
     iter++;
   }
 
