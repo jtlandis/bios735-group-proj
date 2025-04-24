@@ -315,6 +315,252 @@ double line_search_cpp2(const Rcpp::NumericVector& Y,
   return alphas[index];
 }
 
+// attempt at optimizing line search such that we
+// calculate `loglik_cpp()` as little as possible
+//
+// keep a reference "index" into a constant set of
+// scalars.
+// &objective is the loglik_cpp() of a prior iteration
+//
+// immediately check if steping in direction (with current
+// index scalar) is lower than prior loglik_cpp().
+//
+// if so --> current scalar works but maybe we could step
+//           further... thus try larger magnitude scalar of direction
+//           until it is no longer lower (or nan is reached)
+// if not --> current scalar is too large...
+//            thus try smaller scalars (till end of list)
+//
+// regardless of these branches, the oposite direction is
+// always checked (starting from the smallest magnitude).
+// if at any point a smaller objective could not be found
+// then this "reverse" search is stopped immediately
+double line_search_cpp3(const Rcpp::NumericVector& Y,
+                       const Rcpp::NumericMatrix& X,
+                       const Rcpp::NumericVector& beta,
+                       const Rcpp::NumericVector& gamma,
+                       const Rcpp::NumericVector& direc,
+                       int& index,
+                       double& objective) {
+  const double alphas[20] = {
+     0.5,
+     0.1,
+     0.01,
+     0.001,
+     0.0001,
+     0.00001,
+     0.000001,
+     0.0000001,
+     0.00000001,
+     0.000000001,
+    -0.000000001,
+    -0.00000001,
+    -0.0000001,
+    -0.000001,
+    -0.00001,
+    -0.0001,
+    -0.001,
+    -0.01,
+    -0.1,
+    -0.5
+  };
+
+  //double objective = INFINITY;
+  // int n = 20;
+  int q = beta.size();
+  Rcpp::NumericVector beta_new = clone(beta);
+  Rcpp::NumericVector gamma_new = clone(gamma);
+  Rcpp::Range beta_slice = Rcpp::Range(0, q - 1);
+  Rcpp::Range gamma_slice = Rcpp::Range(q, direc.size() - 1);
+  Rcpp::NumericVector grand_beta = direc[beta_slice];
+  Rcpp::NumericVector grand_gamma = direc[gamma_slice];
+
+  double step = alphas[index];
+  beta_new = beta + step * grand_beta;
+  gamma_new = gamma + step * grand_gamma;
+  double f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+  // Rcout << "f: " << f_new << " obj: " << objective << " step: " << step << "\n";
+  if (f_new < objective && !std::isnan(f_new)) {
+
+    // f_new is smaller than the objective and is a number
+    objective = f_new;
+    // now try larger values
+    if (index < 10) {
+      // in the positive region
+      // loop through starting from index
+      // and checking larger scalings until
+      // f_new is no longer smaller.
+      for(int i = index - 1; i >= 1; i--) {
+        step = alphas[i];
+        beta_new = beta + step * grand_beta;
+        gamma_new = gamma + step * grand_gamma;
+        f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+        if (f_new < objective && !std::isnan(f_new)) {
+          objective = f_new;
+          index = i;
+        } else {
+          // we have increased enough
+          break;
+        }
+      }
+      // for completeness, check i == 0
+      if (index == 1) {
+        step = alphas[0];
+        beta_new = beta + step * grand_beta;
+        gamma_new = gamma + step * grand_gamma;
+        f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+        if (f_new < objective && !std::isnan(f_new)) {
+          objective = f_new;
+          index = 0;
+        }
+      }
+      // for verbosity, check other direction...
+      // starting with the smallest value
+      for(int i = 10; i < 20; i++) {
+        step = alphas[i];
+        beta_new = beta + step * grand_beta;
+        gamma_new = gamma + step * grand_gamma;
+        f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+        if (f_new < objective && !std::isnan(f_new)) {
+          objective = f_new;
+          index = i;
+        } else {
+          // failed to find better value
+          break;
+        }
+      }
+    } else {
+      // in the negatives
+      // try larger negatives - i.e. increase index
+      for(int i = index + 1; i < 20; i++) {
+        step = alphas[i];
+        beta_new = beta + step * grand_beta;
+        gamma_new = gamma + step * grand_gamma;
+        f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+        if (f_new < objective && !std::isnan(f_new)) {
+          objective = f_new;
+          index = i;
+        } else {
+          // we have decreased enough
+          break;
+        }
+      }
+
+      // for verbosity, check other direction...
+      // starting with the smallest value
+      for(int i = 9; i > 0; i--) {
+        step = alphas[i];
+        beta_new = beta + step * grand_beta;
+        gamma_new = gamma + step * grand_gamma;
+        f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+        if (f_new < objective && !std::isnan(f_new)) {
+          objective = f_new;
+          index = i;
+        } else {
+          // we have decreased enough
+          break;
+        }
+      }
+      // for completeness, check i == 0
+      if (index == 1) {
+        step = alphas[0];
+        beta_new = beta + step * grand_beta;
+        gamma_new = gamma + step * grand_gamma;
+        f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+        if (f_new < objective && !std::isnan(f_new)) {
+          objective = f_new;
+          index = 0;
+        }
+      }
+
+    }
+  } else {
+    // Rcout << "f_new was either nan or greater than objective\n";
+    // f_new is larger than the objective or f_new is not a number
+    // *** try a smaller alpha ***
+    //
+    // if we are looking in the positive direction
+    if (index < 10) {
+      // loop through up until index 10 - i.e. when it becomes
+      // negative
+      for(int i = index + 1; i < 10; i++) {
+        step = alphas[i];
+        beta_new = beta + step * grand_beta;
+        gamma_new = gamma + step * grand_gamma;
+        f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+        // Rcout << "f: " << f_new << " obj: " << objective << " step: " << step << "\n";
+        // once we find an a value is just small enough - stop
+        if (f_new < objective && !std::isnan(f_new)) {
+          objective = f_new;
+          index = i;
+          break;
+        }
+      }
+      // for verbosity, check other direction...
+      // starting with the smallest value
+      // and keep inceased so long as objective
+      // decreases
+      for(int i = 10; i < 20; i++) {
+        step = alphas[i];
+        beta_new = beta + step * grand_beta;
+        gamma_new = gamma + step * grand_gamma;
+        f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+        if (f_new < objective && !std::isnan(f_new)) {
+          objective = f_new;
+          index = i;
+        } else {
+          // failed to find better value
+          break;
+        }
+      }
+
+    } else {
+      // we are in the negatives
+      for(int i = index - 1; i > 9; i--) {
+        step = alphas[i];
+        beta_new = beta + step * grand_beta;
+        gamma_new = gamma + step * grand_gamma;
+        f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+        if (f_new < objective && !std::isnan(f_new)) {
+          objective = f_new;
+          index = i;
+          // we have decreased enough
+          break;
+        }
+      }
+
+      // for verbosity, check other direction...
+      // starting with the smallest value
+      for(int i = 9; i > 0; i--) {
+        step = alphas[i];
+        beta_new = beta + step * grand_beta;
+        gamma_new = gamma + step * grand_gamma;
+        f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+        if (f_new < objective && !std::isnan(f_new)) {
+          objective = f_new;
+          index = i;
+        } else {
+          // we have decreased enough
+          break;
+        }
+      }
+      // for completeness, check i == 0
+      if (index == 1) {
+        step = alphas[0];
+        beta_new = beta + step * grand_beta;
+        gamma_new = gamma + step * grand_gamma;
+        f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+        if (f_new < objective && !std::isnan(f_new)) {
+          objective = f_new;
+          index = 0;
+        }
+      }
+    }
+
+  }
+  return alphas[index];
+}
+
 
 // [[Rcpp::export]]
 Rcpp::List bfgs_cpp(
