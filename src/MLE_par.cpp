@@ -263,43 +263,6 @@ void update_H(
 }
 
 
-    // double line_search_cpp(const Rcpp::NumericVector& Y,
-    //                        const Rcpp::NumericMatrix& X,
-    //                        const Rcpp::NumericVector& beta,
-    //                        const Rcpp::NumericVector& gamma,
-    //                        const Rcpp::NumericVector& direc,
-    //                        double& f,
-    //                        double alpha = 1) {
-    //   double step = alpha;
-    //   f = -loglik_cpp(Y, X, beta, gamma);
-    //   double c = 1e-4; // Armijo condition constant
-    //   double tau = 0.5; // Step size reduction factor
-
-    //   Rcpp::NumericVector beta_new = clone(beta);
-    //   Rcpp::NumericVector gamma_new = clone(gamma);
-    //   int q = beta.size();
-    //   Rcpp::Range beta_slice = Rcpp::Range(0, q - 1);
-    //   Rcpp::Range gamma_slice = Rcpp::Range(q, direc.size() - 1);
-    //   Rcpp::NumericVector grand_beta = direc[beta_slice];
-    //   Rcpp::NumericVector grand_gamma = direc[gamma_slice];
-
-    //   Rcpp::NumericVector grad = -loglik_grad_cpp(Y, X, beta, gamma);
-    //   double grad_dot_direc = Rcpp::sum(grad * direc);
-
-    //   while (abs(step) > 1e-8) {
-    //     beta_new = beta + step * grand_beta;
-    //     gamma_new = gamma + step * grand_gamma;
-    //     double f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
-    //     Rcout << f_new << " step " << step <<"\n";
-    //     if (f_new <= f + c * step * grad_dot_direc) {
-    //       return step;
-    //     }
-
-    //     step *= tau;
-    //   }
-
-    //   return step;
-    // }
 
 double line_search_cpp2(const Rcpp::NumericVector& Y,
                        const Rcpp::NumericMatrix& X,
@@ -378,15 +341,7 @@ Rcpp::List bfgs_cpp(
   while (ep > tol && iter <= maxIter) {
 
     Rcpp::NumericVector direc = grad_direc(H, grad);
-    // double f_pos = 0;
-    // double step_pos = line_search_cpp(Y, X, beta, gamma, direc, f_pos);
-    // double f_neg = 0;
-    // double step_neg = line_search_cpp(Y, X, beta, gamma, direc, f_neg, -1);
-    // if (f_pos < f_neg) {
-    //   step = step_pos;
-    // } else {
-    //   step = step_neg;
-    // }
+
     step = line_search_cpp2(Y, X, beta, gamma, direc);
     Rcout << "Step size: " << step << " direction: " << direc << "\n";
     direc = direc * step;
