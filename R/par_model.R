@@ -453,6 +453,7 @@ par_model_mat <- function(
   }
   Y <- pull(data, !!y_sym)
   xnames <- colnames(X)
+  attr(X, ".non_empty") <- apply(X, 2, function(x) which(x != 0))
   list(
     Y = Y,
     X = X,
