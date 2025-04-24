@@ -403,7 +403,8 @@ par_model_mat <- function(
   time <- rlang::enexpr(time)
   q <- nlag
   stopifnot(
-    rlang::is_formula(formula)
+    rlang::is_formula(formula),
+    "`nlag` must be >= 0" = q >= 0
   )
   assert_no_dup_time(data, !!time)
   y_sym <- rlang::f_lhs(formula)
@@ -414,10 +415,12 @@ par_model_mat <- function(
   lag_names <- rlang::syms(names(lags))
   # check if any duplicate times
 
-  data <- data |>
-    arrange(!!time) |>
-    mutate(!!!lags) |>
-    slice(-seq_len(.env$q))
+  data <- arrange(data, !!time)
+  if (q > 0) {
+    data <- data |>
+      mutate(!!!lags) |>
+      slice(-seq_len(.env$q))
+  }
 
   lag_formula <- switch(
     match(length(lag_names), c(0, 1, 2), nomatch = 4L),
@@ -448,7 +451,7 @@ par_model_mat <- function(
     )
   )
   #insure
-  if ("(Intercept)" %in% colnames(X)) {
+  if (nlag > 0 && "(Intercept)" %in% colnames(X)) {
     X <- X[, c(names(lags), colnames(X)[-which(colnames(X) %in% names(lags))])]
   }
   Y <- pull(data, !!y_sym)
