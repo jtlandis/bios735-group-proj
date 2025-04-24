@@ -450,7 +450,8 @@ par_model_mat <- function(
       )
     )
   )
-    if (q > 0 && "(Intercept)" %in% colnames(X)) {
+  gamma <- rep(0, ncol(X) - q)
+  if (q > 0) {
     X <- X[, c(names(lags), colnames(X)[-which(colnames(X) %in% names(lags))])]
     names(gamma) <- colnames(X)[-seq_len(q)]
   } else {
