@@ -3,23 +3,60 @@
 #include <Rmath.h>
 using namespace Rcpp;
 
+NumericVector get_cov_parts(
+  const NumericMatrix& X,
+  const NumericVector& gamma,
+  // const List& list,
+  int q
+) {
+
+  Rcpp::List list;
+  int n = X.nrow();
+  int p = gamma.size();
+
+  // Compute covariate part: exp(X * gamma)
+  NumericVector cov_parts(n);
+  RObject attr = X.attr(".non_empty");
+  if (!attr.isNULL()) {
+    List list(attr);
+    int t = 0;
+    for (int j = 0; j < p; ++j) {
+      NumericVector t_index = list[j + q];
+      n = t_index.size();
+      for (int i = 0; i < n; ++i) {
+        t = t_index[i];
+        cov_parts[t] += X(t, j + q) * gamma[j];
+      }
+    }
+  } else {
+    for (int i = 0; i < n; ++i) {
+      double dot = 0.0;
+      for (int j = 0; j < p; ++j) {
+        dot += X(i, j + q) * gamma[j];
+      }
+      cov_parts[i] = dot;
+    }
+  }
+
+  cov_parts = exp(cov_parts);
+
+  return cov_parts;
+
+}
+
+
+
 // [[Rcpp::export]]
 NumericVector get_mt_cpp(const NumericVector& Y, const NumericMatrix& X,
                          const NumericVector& beta, const NumericVector& gamma) {
   int n = Y.size();
   int q = beta.size();
-  int p = gamma.size();
+  // int p = gamma.size();
+  // int t = 0;
   NumericVector mt(n, 0.0);
 
   // Compute covariate part: exp(X * gamma)
-  NumericVector cov_parts(n);
-  for (int i = 0; i < n; ++i) {
-    double dot = 0.0;
-    for (int j = 0; j < p; ++j) {
-      dot += X(i, j + q) * gamma[j];
-    }
-    cov_parts[i] = std::exp(dot);
-  }
+  NumericVector cov_parts = get_cov_parts(X, gamma, q);
 
   // Compute mt
   double sum_beta = std::accumulate(beta.begin(), beta.end(), 0.0);
@@ -43,14 +80,7 @@ NumericMatrix get_mt_grad_cpp(const NumericVector& Y, const NumericMatrix& X,
   NumericMatrix grad_mt(n, q + p);
 
   // Compute covariate part: exp(X * gamma)
-  NumericVector cov_parts(n);
-  for (int i = 0; i < n; ++i) {
-    double dot = 0.0;
-    for (int j = 0; j < p; ++j) {
-      dot += X(i, j + q) * gamma[j];
-    }
-    cov_parts[i] = std::exp(dot);
-  }
+  NumericVector cov_parts = get_cov_parts(X, gamma, q);
 
   // Fill in gradients w.r.t. beta
   for (int l = 0; l < q; ++l) {
