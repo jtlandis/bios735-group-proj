@@ -91,9 +91,24 @@ NumericMatrix get_mt_grad_cpp(const NumericVector& Y, const NumericMatrix& X,
 
   // Fill in gradients w.r.t. gamma
   double sum_beta = std::accumulate(beta.begin(), beta.end(), 0.0);
-  for (int t = 0; t < n; ++t) {
+  sum_beta = 1 - sum_beta;
+  RObject attr = X.attr(".non_empty");
+  if (attr.isNULL()) {
+    for (int t = 0; t < n; ++t) {
+      for (int j = 0; j < p; ++j) {
+        grad_mt(t, q + j) = sum_beta * cov_parts[t] * X(t, q + j);
+      }
+    }
+  } else {
+    List list(attr);
+    int t = 0;
     for (int j = 0; j < p; ++j) {
-      grad_mt(t, q + j) = (1.0 - sum_beta) * cov_parts[t] * X(t, q + j);
+      NumericVector t_index = list[j + q];
+      n = t_index.size();
+      for (int i = 0; i < n; ++i) {
+        t = t_index[i];
+        grad_mt(t, q + j) = sum_beta * cov_parts[t] * X(t, j + q);
+      }
     }
   }
 
