@@ -48,9 +48,9 @@ beta_mat <- function(betas, t) {
 #' y <- mvtnorm::rmvnorm(n = 1, mean = mu, sigma = V)
 #'
 #' ## log-likelihood on values sampled from our given parameters
-#' ll(t(y), matrix(x, ncol = 1), alpha, betas, gamma, sigma2)
+#' nar_ll(t(y), matrix(x, ncol = 1), alpha, betas, gamma, sigma2)
 #' @export
-ll <- function(
+nar_ll <- function(
   y,
   x,
   alpha,
@@ -117,7 +117,7 @@ optim_fit <- function(
       gamma <- x[q + 2]
       sigma2 <- x[q + 3]
 
-      ll(y, X, alpha, betas, gamma, sigma2)
+      nar_ll(y, X, alpha, betas, gamma, sigma2)
     },
     gr = function(x, y, X) {
       alpha <- x[1]
