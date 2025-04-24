@@ -450,18 +450,19 @@ par_model_mat <- function(
       )
     )
   )
-  #insure
-  if (nlag > 0 && "(Intercept)" %in% colnames(X)) {
+    if (q > 0 && "(Intercept)" %in% colnames(X)) {
     X <- X[, c(names(lags), colnames(X)[-which(colnames(X) %in% names(lags))])]
+    names(gamma) <- colnames(X)[-seq_len(q)]
+  } else {
+    names(gamma) <- colnames(X)
   }
   Y <- pull(data, !!y_sym)
-  xnames <- colnames(X)
   attr(X, ".non_empty") <- apply(X, 2, function(x) which(x != 0))
   list(
     Y = Y,
     X = X,
     beta = setNames(rep(0, q), names(lags)),
-    gamma = setNames(rep(0, ncol(X) - q), xnames[-seq_len(q)]),
+    gamma = gamma,
     .data = data
   )
 }

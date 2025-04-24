@@ -684,8 +684,16 @@ Rcpp::List bfgs_cpp2(
   double ep = INFINITY;
   int iter = 1;
   int alpha_index = 0;
-  Rcpp::Range beta_slice = Rcpp::Range(0, q - 1);
-  Rcpp::Range gamma_slice = Rcpp::Range(q, p + q - 1);
+  IntegerVector beta_slice(q);
+  NumericVector beta_proxy(q);
+  for (int i = 0; i < q; i++) {
+    beta_slice[i] = i;
+  }
+  IntegerVector gamma_slice(p);
+  NumericVector gamma_proxy(q);
+  for (int i = 0; i < p; i++) {
+    gamma_slice[i] = i + q;
+  }
   Eigen::MatrixXd H = Eigen::MatrixXd::Identity(p + q, p + q);
   // NumericMatrix H = NumericMatrix::diag(p + q, 1.0);
   Rcpp::NumericVector grad = -loglik_grad_cpp(Y, X, beta, gamma);
@@ -696,8 +704,10 @@ Rcpp::List bfgs_cpp2(
     step = line_search_cpp3(Y, X, beta, gamma, direc, alpha_index, objective);
     // if (verbose) Rcout << " direction: " << direc << "\n";
     direc = direc * step;
-    beta += direc[beta_slice];
-    gamma += direc[gamma_slice];
+    beta_proxy = direc[beta_slice];
+    beta += beta_proxy;
+    gamma_proxy = direc[gamma_slice];
+    gamma += gamma_proxy;
     Rcpp::NumericVector grad_new = -loglik_grad_cpp(Y, X, beta, gamma);
     Rcpp::NumericVector grad_diff = grad_new - grad;
     H = update_H2(H, direc, grad_diff);
