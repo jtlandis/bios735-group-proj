@@ -274,7 +274,7 @@ par_hessian <- function(y, x, beta, gamma) {
 }
 
 assert_no_dup_time <- function(data, time, .call = rlang::caller_env()) {
-  time <- enquo(time)
+  time <- rlang::enquo(time)
   any_dup <- data |>
     summarise(.dup = anyDuplicated(!!time), .groups = "drop")
   if (any(any_dup$.dup)) {

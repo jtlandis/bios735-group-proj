@@ -8,12 +8,8 @@
 "_PACKAGE"
 
 ## usethis namespace: start
-#' @useDynLib pastasales, .registration = TRUE
 #' @import methods
 #' @import Rcpp
-#' @importFrom rstantools rstan_config
-#' @importFrom rstan sampling
-#' @importFrom RcppParallel RcppParallelLibs
 #' @importFrom dplyr across
 #' @importFrom dplyr all_of
 #' @importFrom dplyr arrange
@@ -27,8 +23,12 @@
 #' @importFrom dplyr pull
 #' @importFrom dplyr select
 #' @importFrom dplyr starts_with
+#' @importFrom dplyr summarise
 #' @importFrom dplyr ungroup
 #' @importFrom magrittr %>%
+#' @importFrom RcppParallel RcppParallelLibs
+#' @importFrom rstan sampling
+#' @importFrom rstantools rstan_config
 #' @importFrom stats optim
 #' @importFrom stats rbinom
 #' @importFrom stats rgamma
@@ -36,5 +36,6 @@
 #' @importFrom stats rpois
 #' @importFrom stats setNames
 #' @importFrom tibble tibble
+#' @useDynLib pastasales, .registration = TRUE
 ## usethis namespace: end
 NULL
