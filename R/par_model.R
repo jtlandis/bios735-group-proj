@@ -160,7 +160,7 @@ fit_par_grad_descent <- function(y, x, q = 1, initial_vals = NULL, lr = 1e-4, ma
   }
   fit <- proj_grad_descent_cpp(y, x, beta0, gamma0, lr, maxIter, tol, return_allIters, verbose)
   ll <- par_loglik(y, x, fit$beta, fit$gamma)
-  
+
   list(
     beta = fit$beta,
     gamma = fit$gamma,
@@ -460,4 +460,14 @@ par_model_mat <- function(
     gamma = setNames(rep(0, ncol(X) - q), xnames[-seq_len(q)]),
     .data = data
   )
+}
+
+#' @export
+par_deviance <- function(Y, X, beta, gamma) {
+  d <- numeric(length(Y))
+  non_zero <- Y > 0
+  mt <- loglik_cpp(Y, X, beta, gamma)
+  d[non_zero] <- Y[non_zero] * log(Y[non_zero] / mt[non_zero])
+  d <- d - Y + mt
+  sum(2 * d)
 }
