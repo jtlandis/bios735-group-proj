@@ -133,7 +133,7 @@ model_spec
 mcmc_res <- fit_par_mcmc(
   model_spec$Y,
   model_spec$X,
-  length(model_spec$Y)
+  length(model_spec$beta)
 )
 
 ```
