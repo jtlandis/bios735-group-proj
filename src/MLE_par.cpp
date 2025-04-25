@@ -207,12 +207,23 @@ Rcpp::List proj_grad_descent_cpp(const Rcpp::NumericVector& Y,
     gamma_iters = Rcpp::List(maxIter);
   }
 
+  IntegerVector beta_slice(q);
+  NumericVector beta_proxy(q);
+  for (int i = 0; i < q; i++) {
+    beta_slice[i] = i;
+  }
+  IntegerVector gamma_slice(p);
+  NumericVector gamma_proxy(q);
+  for (int i = 0; i < p; i++) {
+    gamma_slice[i] = i + q;
+  }
+
   while (ep > tol && iter <= maxIter) {
     if (verbose) Rcpp::Rcout << "Iteration: " << iter << "\n";
 
     Rcpp::NumericVector grad = -loglik_grad_cpp(Y, X, beta, gamma);
-    Rcpp::NumericVector beta_grad = grad[Rcpp::Range(0, q - 1)];
-    Rcpp::NumericVector gamma_grad = grad[Rcpp::Range(q, q + p - 1)];
+    Rcpp::NumericVector beta_grad = grad[beta_slice];
+    Rcpp::NumericVector gamma_grad = grad[gamma_slice];
 
     for (int i = 0; i < p; ++i) {
       gamma[i] -= lr * gamma_grad[i];
@@ -222,7 +233,9 @@ Rcpp::List proj_grad_descent_cpp(const Rcpp::NumericVector& Y,
       beta[i] -= lr * beta_grad[i];
     }
 
-    beta = proj_beta_cpp(beta);
+    if (q > 0) {
+      beta = proj_beta_cpp(beta);
+    }
 
     double fnew = -loglik_cpp(Y, X, beta, gamma);
     ep = std::abs(fnew - f);
