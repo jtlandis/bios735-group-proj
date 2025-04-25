@@ -4,7 +4,18 @@
 \alias{par_model_mat}
 \title{Design matrix for analysis}
 \usage{
-par_model_mat(data, formula, time = NULL, nlag = 1)
+par_model_mat(data, formula, time = NULL, nlag = 1, groups = NULL)
+}
+\arguments{
+\item{data}{Data frame containing the data.}
+
+\item{formula}{Formula specifying the model.}
+
+\item{time}{Time variable.}
+
+\item{nlag}{Number of lags.}
+
+\item{groups}{Grouping variable.}
 }
 \description{
 Design matrix for analysis
