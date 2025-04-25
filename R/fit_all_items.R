@@ -215,7 +215,7 @@ fit_par_item_int <- function(
 
 #' @export
 fit_par_bfgs <- function(mod, global_tol = 0.1, verbose = FALSE) {
-  res <- bfgs_cpp2(mod$Y, mod$X, mod$beta, mod$gamma)
+  res <- bfgs_cpp2(mod$Y, mod$X, mod$beta, mod$gamma, verbose = verbose)
   ll <- loglik_cpp(mod$Y, mod$X, res$beta, res$gamma)
   eps <- Inf
   while (eps > global_tol) {
