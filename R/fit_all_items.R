@@ -220,7 +220,7 @@ fit_par_bfgs <- function(
   verbose = FALSE,
   maxIter = 1000
 ) {
-  res <- bfgs_cpp2(
+  res <- bfgs_cpp(
     mod$Y,
     mod$X,
     mod$beta,
@@ -231,12 +231,12 @@ fit_par_bfgs <- function(
   ll <- res$objective
   eps <- Inf
   # may be not important now that I've fixed the bugs
-  # in bfgs_cpp2...
+  # in bfgs_cpp...
   while (eps > global_tol) {
     if (verbose > 2) {
       cat("Inverse Hessian Reset. Current eps:", eps, "\n")
     }
-    res <- bfgs_cpp2(
+    res <- bfgs_cpp(
       mod$Y,
       mod$X,
       res$beta,

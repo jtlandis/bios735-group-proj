@@ -4,7 +4,7 @@
 #include "MLE_utils.h"
 using namespace Rcpp;
 
-Rcpp::NumericVector grad_direc2(
+Rcpp::NumericVector grad_direc(
   const Eigen::MatrixXd& H,
   Rcpp::NumericVector& grad
 ) {
@@ -21,7 +21,7 @@ Rcpp::NumericVector grad_direc2(
 }
 
 // x * t(y)
-Eigen::MatrixXd simple_dot2(const NumericVector& x, const NumericVector& y, double div = 1.0) {
+Eigen::MatrixXd simple_dot(const NumericVector& x, const NumericVector& y, double div = 1.0) {
   int n = x.size();
   Eigen::MatrixXd result(n, n);
 
@@ -34,7 +34,7 @@ Eigen::MatrixXd simple_dot2(const NumericVector& x, const NumericVector& y, doub
   return result;
 }
 
-Eigen::MatrixXd update_H2(
+Eigen::MatrixXd update_H(
   Eigen::MatrixXd& H,
   const Rcpp::NumericVector& step,
   const Rcpp::NumericVector& diff) {
@@ -44,9 +44,9 @@ Eigen::MatrixXd update_H2(
     yts += diff[i] * step[i];
   }
 
-  Eigen::MatrixXd left = -simple_dot2(step, diff, yts);
-  Eigen::MatrixXd right = -simple_dot2(diff, step, yts);
-  Eigen::MatrixXd sst = simple_dot2(step, step, yts);
+  Eigen::MatrixXd left = -simple_dot(step, diff, yts);
+  Eigen::MatrixXd right = -simple_dot(diff, step, yts);
+  Eigen::MatrixXd sst = simple_dot(step, step, yts);
 
   // simulate I - M
   for (int i = 0; i < n; i++) {
@@ -103,7 +103,7 @@ double armijo_line_search(const Rcpp::NumericVector& Y,
 }
 
 // [[Rcpp::export]]
-Rcpp::List bfgs_cpp2(
+Rcpp::List bfgs_cpp(
   const Rcpp::NumericVector& Y,
   const Rcpp::NumericMatrix& X,
   Rcpp::NumericVector beta0,
@@ -138,7 +138,7 @@ Rcpp::List bfgs_cpp2(
   double step = 0;
   while (ep > tol && iter <= maxIter) {
 
-    Rcpp::NumericVector direc = grad_direc2(H, grad);
+    Rcpp::NumericVector direc = grad_direc(H, grad);
     // step = line_search_cpp3(Y, X, beta, gamma, direc, alpha_index, objective, beta_slice, gamma_slice);
     step = armijo_line_search(Y, X, beta, gamma, direc, beta_slice, gamma_slice, objective);
     // if (verbose) Rcout << " direction: " << direc << "\n";
@@ -149,7 +149,7 @@ Rcpp::List bfgs_cpp2(
     gamma += gamma_proxy;
     Rcpp::NumericVector grad_new = -loglik_grad_cpp(Y, X, beta, gamma);
     Rcpp::NumericVector grad_diff = grad_new - grad;
-    H = update_H2(H, direc, grad_diff);
+    H = update_H(H, direc, grad_diff);
     //double f_new = -loglik_cpp(Y, X, beta, gamma);
     ep = std::abs(objective - old_objective);
     old_objective = objective;

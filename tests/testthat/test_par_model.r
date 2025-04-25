@@ -7,7 +7,7 @@ test_that("par_model: Intercept only", {
   ll_old <- expect_no_error(
     loglik_cpp(mod$Y, mod$X, mod$beta, mod$gamma)
   )
-  res <- expect_no_error(bfgs_cpp2(mod$Y, mod$X, mod$beta, mod$gamma))
+  res <- expect_no_error(bfgs_cpp(mod$Y, mod$X, mod$beta, mod$gamma))
   expect_snapshot(print(res))
   # note this is barely better
   expect_true(loglik_cpp(mod$Y, mod$X, res$beta, res$gamma) > ll_old)
@@ -20,7 +20,7 @@ test_that("par_model: lags only", {
   ll_old <- expect_no_error(
     loglik_cpp(mod$Y, mod$X, mod$beta, mod$gamma)
   )
-  res <- expect_no_error(bfgs_cpp2(mod$Y, mod$X, mod$beta, mod$gamma))
+  res <- expect_no_error(bfgs_cpp(mod$Y, mod$X, mod$beta, mod$gamma))
   expect_snapshot(print(res))
   expect_true(loglik_cpp(mod$Y, mod$X, res$beta, res$gamma) > ll_old)
 })
@@ -38,7 +38,7 @@ test_that("par_model: lags and covar", {
   ll_old <- expect_no_error(
     loglik_cpp(mod$Y, mod$X, mod$beta, mod$gamma)
   )
-  res <- expect_no_error(bfgs_cpp2(mod$Y, mod$X, mod$beta, mod$gamma))
+  res <- expect_no_error(bfgs_cpp(mod$Y, mod$X, mod$beta, mod$gamma))
   expect_snapshot(print(res))
   expect_true(loglik_cpp(mod$Y, mod$X, res$beta, res$gamma) > ll_old)
 })
@@ -57,7 +57,7 @@ test_that("par_model: estimate covariates by ave items", {
     loglik_cpp(mod$Y, mod$X, mod$beta, mod$gamma)
   )
 
-  res <- expect_no_error(bfgs_cpp2(mod$Y, mod$X, mod$beta, mod$gamma))
+  res <- expect_no_error(bfgs_cpp(mod$Y, mod$X, mod$beta, mod$gamma))
   expect_snapshot(print(res))
   expect_true(loglik_cpp(mod$Y, mod$X, res$beta, res$gamma) > ll_old)
 })

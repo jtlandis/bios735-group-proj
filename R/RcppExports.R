@@ -37,12 +37,8 @@ ddirichlet_cpp <- function(x, alpha, log) {
     .Call(`_pastasales_ddirichlet_cpp`, x, alpha, log)
 }
 
-bfgs_cpp <- function(Y, X, beta0, gamma0, maxIter = 100L, tol = 1e-5, verbose = FALSE) {
-    .Call(`_pastasales_bfgs_cpp`, Y, X, beta0, gamma0, maxIter, tol, verbose)
-}
-
-bfgs_cpp2 <- function(Y, X, beta0, gamma0, maxIter = 100L, tol = 1e-5, verbose = 0L, iter = 0L) {
-    .Call(`_pastasales_bfgs_cpp2`, Y, X, beta0, gamma0, maxIter, tol, verbose, iter)
+bfgs_cpp <- function(Y, X, beta0, gamma0, maxIter = 100L, tol = 1e-5, verbose = 0L, iter = 0L) {
+    .Call(`_pastasales_bfgs_cpp`, Y, X, beta0, gamma0, maxIter, tol, verbose, iter)
 }
 
 proj_grad_descent_cpp <- function(Y, X, beta0, gamma0, lr = 1e-4, maxIter = 100L, tol = 1e-5, return_allIters = FALSE, verbose = FALSE) {
