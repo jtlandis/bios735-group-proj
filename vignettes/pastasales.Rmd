@@ -18,8 +18,17 @@ knitr::opts_chunk$set(
 #temporary name of package
 library(pastasales)
 library(ggplot2)
+library(dplyr)
+library(tidyr)
 ```
 
+```{r}
+
+data_set_tidy
+
+```
+
+This data contains time series data for pasta sales for 4 brands. Data made available is the date, brand identifier, item identifier, promotion status, and quantity sold.
 
 ```{r}
 ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
@@ -28,16 +37,59 @@ ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
   theme_classic()
 ```
 
+Some brands have more items than others, and perform better on average. Regardless of the number of items, each subject (brand and item pair) has a total of 1798 days of data.
+
+```{r}
+group_by(data_set_tidy, brand) |>
+  summarise(n_items = length(unique(item)),
+            data_points = n(),
+            all_1798 = all(vapply(split(seq_len(n()), item),
+                                  length, 1L) == 1798),
+            total_sales = sum(QTY),
+            avg_sales = mean(QTY),
+            days_promoted = sum(PROMO))
+```
+
+We can see from the above table that brand 2 has spent many days promoting their items.
+
 ```{r}
 ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
-  geom_path(aes(group = item, color = PROMO)) +
+  geom_path(aes(group = item, color = as.factor(PROMO))) +
+  scale_color_manual(values = c("black", "red")) +
   facet_grid(rows = vars(brand), scales = "free_y") +
   theme_classic()
 ```
 
+Summarising the data further we can see more specific information about each brand and item pair. For instance, most brands spent under 25% of their days promoting their items, with the exception of brand 2 which spent upwards of 90% of their days promoting their items. This over promotion will make it difficult to estimate any baseline sale rate for these items.
 
 ```{r}
-library(dplyr)
+data_set_tidy |>
+  mutate(item = as.integer(item)) |>
+  group_by(brand, item) |>
+  summarise(
+    days_promoted = sum(PROMO),
+    total_sales = sum(QTY),
+    avg_sales = mean(QTY),
+    avg_sales_w_promo = mean(QTY[PROMO == 1]),
+    avg_sales_wo_promo = mean(QTY[PROMO == 0]),
+    investment = days_promoted/n(),
+    ratio = avg_sales_w_promo/avg_sales_wo_promo
+  ) %>% {
+    .gg <- pivot_longer(.,cols = c(total_sales, investment, ratio)) |>
+      ggplot(aes(x = item, y = value)) +
+      geom_col(fill = "steelblue") +
+      facet_grid(cols = vars(brand), rows = vars(name), scales = "free") + scale_x_discrete() +
+      theme_minimal() +
+      labs(x = "Brand Item", y = "Metric")
+
+    plot(.gg)
+    .
+
+  } |>
+arrange(desc(total_sales)) |>
+## show the top 3 and bottom 3 brand items
+slice(c(1:3, (n() - 2):n())) |>
+knitr::kable()
 
 group_by(data_set_tidy, brand) |>
   summarise(n_items = length(unique(item)), data_points = n())
