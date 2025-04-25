@@ -614,6 +614,47 @@ double line_search_cpp3(const Rcpp::NumericVector& Y,
   return alphas[index];
 }
 
+double armijo_line_search(const Rcpp::NumericVector& Y,
+                          const Rcpp::NumericMatrix& X,
+                          const Rcpp::NumericVector& beta,
+                          const Rcpp::NumericVector& gamma,
+                          const Rcpp::NumericVector& direc,
+                          IntegerVector& beta_slice,
+                          IntegerVector& gamma_slice,
+                          double& f,
+                          double alpha = 1,
+                          double c = 1e-4,
+                          double tau = 0.5) {
+  // double f_old = -loglik_cpp(Y, X, beta, gamma);
+  Rcpp::NumericVector grad = -loglik_grad_cpp(Y, X, beta, gamma);
+  double grad_dot_direc = sum(grad * direc);
+  Rcpp::NumericVector beta_new = clone(beta);
+  Rcpp::NumericVector gamma_new = clone(gamma);
+  Rcpp::NumericVector grand_beta = direc[beta_slice];
+  Rcpp::NumericVector grand_gamma = direc[gamma_slice];
+  while (true) {
+    beta_new = beta + alpha * grand_beta;
+    gamma_new = gamma + alpha * grand_gamma;
+    double f_new = -loglik_cpp(Y, X, beta_new, gamma_new);
+    // Rcpp::NumericVector grad_new = -loglik_grad_cpp(Y, X, beta_new, gamma_new);
+    // double grad_new_dot_direc = Rcpp::sum(grad_new * direc);
+
+    if (f_new <= f + c * alpha * grad_dot_direc) {
+      // if(std::abs(grad_new_dot_direc) < std::abs(c2 * grad_dot_direc)) {
+        // both conditions are met
+        f = f_new;
+        break;
+    //   }
+    //   alpha /=  0.8;
+    // } else {
+
+    }
+    alpha *= tau;
+
+  }
+
+  return alpha;
+}
 
 // [[Rcpp::export]]
 Rcpp::List bfgs_cpp(
@@ -701,7 +742,8 @@ Rcpp::List bfgs_cpp2(
   while (ep > tol && iter <= maxIter) {
 
     Rcpp::NumericVector direc = grad_direc2(H, grad);
-    step = line_search_cpp3(Y, X, beta, gamma, direc, alpha_index, objective);
+    // step = line_search_cpp3(Y, X, beta, gamma, direc, alpha_index, objective, beta_slice, gamma_slice);
+    step = armijo_line_search(Y, X, beta, gamma, direc, beta_slice, gamma_slice, objective);
     // if (verbose) Rcout << " direction: " << direc << "\n";
     direc = direc * step;
     beta_proxy = direc[beta_slice];

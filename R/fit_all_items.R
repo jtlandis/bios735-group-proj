@@ -212,3 +212,23 @@ fit_par_item_int <- function(
   )
   return(fit)
 }
+
+#' @export
+fit_par_bfgs <- function(mod, tol = 1e-4) {
+  res <- bfgs_cpp2(mod$Y, mod$X, mod$beta, mod$gamma)
+  ll <- loglik_cpp(mod$Y, mod$X, res$beta, res$gamma)
+  eps <- Inf
+  while (eps > tol) {
+    res <- bfgs_cpp2(mod$Y, mod$X, res$beta, res$gamma)
+    ll_new <- loglik_cpp(mod$Y, mod$X, res$beta, res$gamma)
+    eps <- abs(ll_new - ll)
+    ll <- ll_new
+  }
+  c(
+    res,
+    list(
+      ll = ll,
+      eps = eps
+    )
+  )
+}
