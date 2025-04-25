@@ -1,3 +1,9 @@
+###################################################################
+## THIS FILE IS FOR THE OLD AR MODEL (MODELING WITH NORMAL DIST)
+##
+## IT IS LIKELY OUT OF DATE AND NOT RELEVANT ANYMORE
+###################################################################
+
 #' @title Beta Matrix
 #' @description Creates a matrix of beta values for a given number of time points (t) and lag values (q).
 #' @param betas Numeric vector of beta values.
