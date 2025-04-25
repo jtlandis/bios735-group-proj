@@ -217,7 +217,9 @@ model_large$gamma <- res$gamma
 
 ```{r}
 #| echo: false
-model_large <- mod_promo_brand_item
+model_large <- eval(mod_promo_brand_item$mod_call)
+model_large$beta <- mod_promo_brand_item$mod_fit$beta
+model_large$gamma <- mod_promo_brand_item$mod_fit$gamma
 ```
 
 ```{r}
