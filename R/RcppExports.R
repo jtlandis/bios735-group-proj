@@ -45,6 +45,18 @@ ddirichlet_cpp <- function(x, alpha, log) {
     .Call(`_pastasales_ddirichlet_cpp`, x, alpha, log)
 }
 
+dirichlet_to_eta <- function(beta_tilde) {
+    .Call(`_pastasales_dirichlet_to_eta`, beta_tilde)
+}
+
+eta_to_dirichlet <- function(eta) {
+    .Call(`_pastasales_eta_to_dirichlet`, eta)
+}
+
+log_jacobian_eta_to_dirichlet <- function(eta) {
+    .Call(`_pastasales_log_jacobian_eta_to_dirichlet`, eta)
+}
+
 get_mt_cpp <- function(Y, X, beta, gamma) {
     .Call(`_pastasales_get_mt_cpp`, Y, X, beta, gamma)
 }

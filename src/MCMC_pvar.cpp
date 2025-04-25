@@ -150,11 +150,11 @@ List run_mcmc_pvar_cpp(const NumericMatrix& Y,
       mu_gamma_brand(b, j) = R::rnorm(mu0, pow(sigsq0, 0.5));
       sigsq_gamma_brand(b, j) = 1 / R::rgamma(a_gamma, 1/b_gamma);
     }
-    NumericVector alpha_beta_b = rdirichlet_cpp(alpha0);
+    NumericVector alpha_beta_b = clone(alpha0); //rdirichlet_cpp(alpha0);
     for (int l = 0; l < q; ++l) {
       alpha_beta_brand(b, l) = alpha_beta_b[l];
     }
-    tau_brand[b] = R::rbeta(a_tau, b_tau);
+    tau_brand[b] = a_tau / (a_tau + b_tau); //R::rbeta(a_tau, b_tau);
   }
   
   // Item-Level initialization
@@ -181,71 +181,10 @@ List run_mcmc_pvar_cpp(const NumericMatrix& Y,
   List alpha_samples(n_iter); // brand-level Dirichlet params for AR effects
   List tau_samples(n_iter); // brand-level scaling factors for AR effects
   
+  int accept_alpha = 0;
+  
   // --- MCMC loop ---
   for (int iter = 0; iter < n_iter; ++iter) {
-    
-    // --- ITEM-LEVEL SAMPLING ---
-    for (int i = 0; i < n_items; ++i) {
-      
-      // Data for i-th item
-      NumericVector Y_i = Y(_, i);
-      NumericVector X_i = X(_, i);
-      int b = G[i] - 1;
-      
-      // Current gamma and beta for item i
-      NumericVector gamma_i = Gamma_item(i, _);
-      NumericVector beta_i = Beta_item(i, _);
-      NumericVector beta_tilde_i(q);
-      for (int l = 0; l < q; ++l) {
-        beta_tilde_i[l] = beta_i[l] / tau_brand[b];
-      }
-      
-      // Propose new gamma_i
-      NumericVector mu_b = mu_gamma_brand(b, _);
-      NumericVector sigsq_b = sigsq_gamma_brand(b, _);
-      NumericVector gamma_prop_i(p);
-      for (int j = 0; j < p; ++j) {
-        gamma_prop_i[j] = R::rnorm(gamma_i[j], proposal_sd);
-      }
-      
-      // Compute posterior likelihood ratio
-      double lp_new_gam = loglik_item_cpp(Y_i, X_i, beta_i, gamma_prop_i) + 
-        dnorm_vec_cpp(gamma_prop_i, mu_b, sigsq_b, true);
-      double lp_old_gam = loglik_item_cpp(Y_i, X_i, beta_i, gamma_i) +
-        dnorm_vec_cpp(gamma_i, mu_b, sigsq_b, true);
-      
-      // Accept/reject proposed gamma_i
-      if (std::log(R::runif(0, 1)) < lp_new_gam - lp_old_gam) {
-        for (int j = 0; j < p; ++j) {
-          Gamma_item(i, j) = gamma_prop_i[j];
-        }
-        gamma_i = clone(gamma_prop_i); // updated gamma_i for beta update
-      }
-      
-      // Propose beta_tilde
-      NumericVector alpha_b = alpha_beta_brand(b, _);
-      double tau_b = tau_brand[b];
-      NumericVector beta_tilde_prop_i = rdirichlet_cpp(alpha_b);
-      NumericVector beta_prop_i(q);
-      for (int l = 0; l < q; ++l) {
-        beta_prop_i[l] = tau_b * beta_tilde_prop_i[l];
-      }
-      
-      // Compute posterior likelihood ratio
-      double lp_new_beta = loglik_item_cpp(Y_i, X_i, beta_prop_i, gamma_i) +
-        ddirichlet_cpp(beta_tilde_prop_i, alpha_b, true);
-      double lp_old_beta = loglik_item_cpp(Y_i, X_i, beta_i, gamma_i) +
-        ddirichlet_cpp(beta_tilde_i, alpha_b, true);
-      
-      // Accept/rejected proposed beta_i
-      if (std::log(R::runif(0, 1)) < (lp_new_beta - lp_old_beta)) {
-        for (int l = 0; l < q; ++l) {
-          Beta_item(i, l) = beta_prop_i[l];
-        }
-        // beta_tilde_i = clone(beta_tilde_prop_i);
-        // beta_i = clone(beta_prop_i);
-      }
-    }
     
     // --- BRAND-LEVEL SAMPLING ---
     for (int b = 0; b < B; ++b) {
@@ -301,9 +240,13 @@ List run_mcmc_pvar_cpp(const NumericMatrix& Y,
         sigsq_gamma_brand(b, j) = 1.0 / R::rgamma(shape_post, 1.0 / rate_post);
       }
       
-      // Sample tau_brand (MH)
+      // Sample tau_brand (MH) with proposal in inv-logit space
       double tau_b = tau_brand[b];
-      double tau_prop_b = R::rbeta(a_tau, b_tau);
+      double eta_curr_tau = std::log(tau_b / (1.0 - tau_b));
+      double eta_prop_tau = eta_curr_tau + R::rnorm(0, proposal_sd);
+      double tau_prop_b = 1.0 / (1.0 + std::exp(-eta_prop_tau));
+      //double tau_prop_b = R::rbeta(a_tau, b_tau);
+      
       NumericMatrix Beta_prop_b = clone(Beta_b);
       for (int j = 0; j < n_b; ++j) {
         for (int l = 0; l < q; ++l) {
@@ -311,18 +254,43 @@ List run_mcmc_pvar_cpp(const NumericMatrix& Y,
         }
       }
       
-      double lp_new_tau = loglik_pvar_cpp(Y_b, X_b, Beta_prop_b, Gamma_b) + R::dbeta(tau_prop_b, a_tau, b_tau, 1);
-      double lp_old_tau = loglik_pvar_cpp(Y_b, X_b, Beta_b, Gamma_b) + R::dbeta(tau_b, a_tau, b_tau, 1);
+      double lp_new_tau = loglik_pvar_cpp(Y_b, X_b, Beta_prop_b, Gamma_b) + 
+        R::dbeta(tau_prop_b, a_tau, b_tau, 1) +
+        std::log(tau_prop_b) + std::log(1.0 - tau_prop_b);
+      double lp_old_tau = loglik_pvar_cpp(Y_b, X_b, Beta_b, Gamma_b) + 
+        R::dbeta(tau_b, a_tau, b_tau, 1) +
+        std::log(tau_b) + std::log(1.0 - tau_b);
       
       if (std::log(R::runif(0, 1)) < (lp_new_tau - lp_old_tau)) {
         tau_brand[b] = tau_prop_b;
         tau_b = tau_prop_b;
         Beta_b = clone(Beta_prop_b);
+        
+        // update appropriate item-level Beta's
+        for (int j = 0; j < n_b; ++j) {
+          int item_idx = brand_indices[j];
+          for (int l = 0; l < q; ++l) {
+            Beta_item(item_idx, l) = Beta_b(j, l);
+          }
+        }
       }
       
-      // Sample alpha_beta_brand (MH)
-      NumericVector alpha_prop_b = rdirichlet_cpp(alpha0);
+      // Sample alpha_beta_brand (MH) from random walk in unconstrained space
+      //NumericVector alpha_prop_b = rdirichlet_cpp(alpha0);
       NumericVector alpha_b = alpha_beta_brand(b, _);
+      NumericVector alpha_prop_b(q);
+      NumericVector eta_curr_alpha, eta_prop_alpha;
+      if (q == 1) {
+        alpha_prop_b[0] = 1.0;  // Only one component on the simplex
+      } else {
+        eta_curr_alpha = dirichlet_to_eta(alpha_b);
+        eta_prop_alpha = clone(eta_curr_alpha);
+        for (int i = 0; i < q - 1; ++i) {
+          eta_prop_alpha[i] += R::rnorm(0, proposal_sd);
+        }
+        alpha_prop_b = eta_to_dirichlet(eta_prop_alpha);
+      }
+      
       double lp_new_alpha = ddirichlet_cpp(alpha_prop_b, alpha0, true); // start with log-prior
       double lp_old_alpha = ddirichlet_cpp(alpha_b, alpha0, true); // start with log-prior
       
@@ -336,12 +304,105 @@ List run_mcmc_pvar_cpp(const NumericMatrix& Y,
         lp_old_alpha += ddirichlet_cpp(beta_tilde_i, alpha_b, true);
       }
       
+      // add jacobian
+      if (q > 1) {
+        lp_new_alpha += log_jacobian_eta_to_dirichlet(eta_prop_alpha);
+        lp_old_alpha += log_jacobian_eta_to_dirichlet(eta_curr_alpha);
+      }
+      
       if (std::log(R::runif(0, 1)) < (lp_new_alpha - lp_old_alpha)) {
         for (int l = 0; l < q; ++l) {
           alpha_beta_brand(b, l) = alpha_prop_b[l];
         }
+        accept_alpha++;
       }
     }
+    
+    // --- ITEM-LEVEL SAMPLING ---
+    for (int i = 0; i < n_items; ++i) {
+      
+      // Data for i-th item
+      NumericVector Y_i = Y(_, i);
+      NumericVector X_i = X(_, i);
+      int b = G[i] - 1;
+      
+      // Current gamma and beta for item i
+      NumericVector gamma_i = Gamma_item(i, _);
+      NumericVector beta_i = Beta_item(i, _);
+      NumericVector beta_tilde_i(q);
+      for (int l = 0; l < q; ++l) {
+        beta_tilde_i[l] = beta_i[l] / tau_brand[b];
+      }
+      
+      // Propose new gamma_i
+      NumericVector mu_b = mu_gamma_brand(b, _);
+      NumericVector sigsq_b = sigsq_gamma_brand(b, _);
+      NumericVector gamma_prop_i(p);
+      for (int j = 0; j < p; ++j) {
+        gamma_prop_i[j] = R::rnorm(gamma_i[j], proposal_sd);
+      }
+      
+      // Compute posterior likelihood ratio
+      double lp_new_gam = loglik_item_cpp(Y_i, X_i, beta_i, gamma_prop_i) + 
+        dnorm_vec_cpp(gamma_prop_i, mu_b, sigsq_b, true);
+      double lp_old_gam = loglik_item_cpp(Y_i, X_i, beta_i, gamma_i) +
+        dnorm_vec_cpp(gamma_i, mu_b, sigsq_b, true);
+      
+      // Accept/reject proposed gamma_i
+      if (std::log(R::runif(0, 1)) < lp_new_gam - lp_old_gam) {
+        for (int j = 0; j < p; ++j) {
+          Gamma_item(i, j) = gamma_prop_i[j];
+        }
+        gamma_i = clone(gamma_prop_i); // updated gamma_i for beta update
+      }
+      
+      // Propose beta_tilde with random walk in unconstrained space
+      NumericVector alpha_b = alpha_beta_brand(b, _);
+      double tau_b = tau_brand[b];
+      
+      //NumericVector beta_tilde_prop_i = rdirichlet_cpp(alpha_b);
+      NumericVector beta_tilde_prop_i(q);
+      if (q == 1) {
+        beta_tilde_prop_i[0] = 1.0;  // Only one component on the simplex
+      } else {
+        NumericVector eta_curr_beta = dirichlet_to_eta(beta_tilde_i);
+        NumericVector eta_prop_beta = clone(eta_curr_beta);
+        for (int i = 0; i < q - 1; ++i) {
+          eta_prop_beta[i] += R::rnorm(0, proposal_sd);
+        }
+        beta_tilde_prop_i = eta_to_dirichlet(eta_prop_beta);
+      }
+      
+      
+      NumericVector beta_prop_i(q);
+      for (int l = 0; l < q; ++l) {
+        beta_prop_i[l] = tau_b * beta_tilde_prop_i[l];
+      }
+      
+      // Compute posterior likelihood ratio
+      double lp_new_beta = loglik_item_cpp(Y_i, X_i, beta_prop_i, gamma_i) +
+        ddirichlet_cpp(beta_tilde_prop_i, alpha_b, true) +
+        (q > 1 ? log_jacobian_eta_to_dirichlet(dirichlet_to_eta(beta_tilde_prop_i)) : 0.0);
+      
+      double lp_old_beta = loglik_item_cpp(Y_i, X_i, beta_i, gamma_i) +
+        ddirichlet_cpp(beta_tilde_i, alpha_b, true) +
+        (q > 1 ? log_jacobian_eta_to_dirichlet(dirichlet_to_eta(beta_tilde_i)) : 0.0);
+      
+      // double lp_new_beta = loglik_item_cpp(Y_i, X_i, beta_prop_i, gamma_i) +
+      //   ddirichlet_cpp(beta_tilde_prop_i, alpha_b, true);
+      // double lp_old_beta = loglik_item_cpp(Y_i, X_i, beta_i, gamma_i) +
+      //   ddirichlet_cpp(beta_tilde_i, alpha_b, true);
+      
+      // Accept/rejected proposed beta_i
+      if (std::log(R::runif(0, 1)) < (lp_new_beta - lp_old_beta)) {
+        for (int l = 0; l < q; ++l) {
+          Beta_item(i, l) = beta_prop_i[l];
+        }
+      }
+    }
+    
+    if (verbose && (iter + 1) % 50 == 0)
+      Rcpp::Rcout << "Accepted alpha proposals: " << accept_alpha << std::endl;
     
     // Store samples
     Gamma_samples[iter] = clone(Gamma_item);
