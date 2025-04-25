@@ -31,7 +31,8 @@ Suggests:
     ggplot2,
     knitr,
     mvtnorm,
-    rmarkdown
+    rmarkdown,
+    testthat (>= 3.0.0)
 Biarch: true
 LinkingTo:
     BH (>= 1.66.0),
@@ -42,3 +43,4 @@ LinkingTo:
     StanHeaders (>= 2.18.0)
 SystemRequirements: GNU make
 VignetteBuilder: knitr
+Config/testthat/edition: 3
