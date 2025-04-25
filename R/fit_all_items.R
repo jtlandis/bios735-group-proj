@@ -218,6 +218,8 @@ fit_par_bfgs <- function(mod, global_tol = 0.1, verbose = FALSE) {
   res <- bfgs_cpp2(mod$Y, mod$X, mod$beta, mod$gamma, verbose = verbose)
   ll <- res$objective
   eps <- Inf
+  # may be not important now that I've fixed the bugs
+  # in bfgs_cpp2...
   while (eps > global_tol) {
     res <- bfgs_cpp2(
       mod$Y,
@@ -232,7 +234,7 @@ fit_par_bfgs <- function(mod, global_tol = 0.1, verbose = FALSE) {
     ll <- ll_new
   }
   c(
-    res,
+    res[-4],
     list(
       ll = ll,
       eps = eps
