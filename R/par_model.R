@@ -385,9 +385,16 @@ par_hessian <- function(y, x, beta, gamma) {
   H
 }
 
-assert_no_dup_time <- function(data, time, .call = rlang::caller_env()) {
+assert_no_dup_time <- function(
+  data,
+  time,
+  groups = NULL,
+  .call = rlang::caller_env()
+) {
   time <- rlang::enquo(time)
+  groups <- rlang::enquo(groups)
   any_dup <- data |>
+    group_by(across(!!groups)) |>
     summarise(.dup = anyDuplicated(!!time), .groups = "drop")
   if (any(any_dup$.dup)) {
     if (ncol(any_dup) == 1) {
@@ -398,7 +405,7 @@ assert_no_dup_time <- function(data, time, .call = rlang::caller_env()) {
             rlang::as_label(time)
           ),
           "!" = "only one time point is permitted per group",
-          "i" = "consider subsetting your data, or use `dplyr::group_by(data, ...)`"
+          "i" = "consider subsetting your data, or use `groups` argument"
         ),
         call = .call
       )
@@ -426,7 +433,7 @@ assert_no_dup_time <- function(data, time, .call = rlang::caller_env()) {
             }
           },
           "!" = "only one time point is permitted per group",
-          "i" = "consider subsetting your data, or use `dplyr::group_by(data, ...)`"
+          "i" = "consider subsetting your data, or use `groups` argument"
         ),
         call = .call
       )
@@ -440,12 +447,18 @@ assert_no_dup_time <- function(data, time, .call = rlang::caller_env()) {
 # bfgs_cpp(mm_$Y, mm_$X, )
 
 #' Design matrix for analysis
+#' @param data Data frame containing the data.
+#' @param formula Formula specifying the model.
+#' @param time Time variable.
+#' @param nlag Number of lags.
+#' @param groups Grouping variable.
 #' @export
 par_model_mat <- function(
   data,
   formula,
   time = NULL,
-  nlag = 1
+  nlag = 1,
+  groups = NULL
 ) {
   time <- rlang::enexpr(time)
   q <- nlag
@@ -453,7 +466,7 @@ par_model_mat <- function(
     rlang::is_formula(formula),
     "`nlag` must be >= 0" = q >= 0
   )
-  assert_no_dup_time(data, !!time)
+  assert_no_dup_time(data, !!time, !!groups)
   y_sym <- rlang::f_lhs(formula)
   covar <- rlang::f_rhs(formula)
   seq_ <- seq_len(q)
