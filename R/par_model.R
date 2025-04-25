@@ -36,6 +36,31 @@ par_loglik <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
   return(ll)
 }
 
+par_loglik_old <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
+  T <- length(y)
+  stopifnot(nrow(x) == T)
+  p <- length(gamma)
+  if (length(gamma) == 0) gamma <- 0
+  ll <- 0
+  #beta_seq <- rev(seq_len(q)) - 1L
+  gamma_seq <- seq_len(p)
+  for (t in (q + 1):T) {
+    y_lags <- y[(t - 1):(t - q)]
+    x_t <- x[t, gamma_seq]
+
+    auto_part <- sum(beta * y_lags)
+    linear_part <- mu + sum(x_t * gamma)
+    mix_weight <- 1 - sum(beta)
+
+    m_t <- auto_part + mix_weight * exp(linear_part)
+    if (m_t <= 0) m_t <- 1e-10 # safeguard
+
+    ll <- ll + y[t] * log(m_t) - m_t - lgamma(y[t] + 1)
+  }
+
+  return(ll)
+}
+
 #' Fit PAR Model Using Optim
 #'
 #' Fit a non-hierarchical PAR model using maximum likelihood and optim().
@@ -231,7 +256,7 @@ fit_par_mcmc <- function(
   ss <- round(burn_in * mcmc_iter):mcmc_iter
   beta_est <- colMeans(mcmc$beta[ss, , drop = F])
   gamma_est <- colMeans(mcmc$gamma[ss, , drop = F])
-  ll <- par_loglik(y, x, beta_est, gamma_est)
+  ll <- par_loglik_old(y, x, beta_est, gamma_est)
 
   if (return_mcmc == T)
     res <- list(

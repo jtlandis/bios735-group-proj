@@ -214,20 +214,36 @@ fit_par_item_int <- function(
 }
 
 #' @export
-fit_par_bfgs <- function(mod, global_tol = 0.1, verbose = FALSE) {
-  res <- bfgs_cpp2(mod$Y, mod$X, mod$beta, mod$gamma, verbose = verbose)
+fit_par_bfgs <- function(
+  mod,
+  global_tol = 0.1,
+  verbose = FALSE,
+  maxIter = 1000
+) {
+  res <- bfgs_cpp2(
+    mod$Y,
+    mod$X,
+    mod$beta,
+    mod$gamma,
+    verbose = verbose,
+    maxIter = maxIter
+  )
   ll <- res$objective
   eps <- Inf
   # may be not important now that I've fixed the bugs
   # in bfgs_cpp2...
   while (eps > global_tol) {
+    if (verbose > 2) {
+      cat("Inverse Hessian Reset. Current eps:", eps, "\n")
+    }
     res <- bfgs_cpp2(
       mod$Y,
       mod$X,
       res$beta,
       res$gamma,
       verbose = verbose,
-      iter = res$iter
+      iter = res$iter,
+      maxIter = maxIter
     )
     ll_new <- res$objective
     eps <- abs(ll_new - ll)

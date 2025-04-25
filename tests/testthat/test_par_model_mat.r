@@ -65,10 +65,13 @@ test_that("model_mat returns correct size w/ groups", {
     groups = g,
     nlag = 2
   )
+
   # minus 1 data point per group
   expect_equal(nrow(mod$X), 9)
   expect_equal(length(mod$Y), 9)
 })
+
+
 
 test_that("is par_model_spec", {
   mod <- par_model_mat(
@@ -78,4 +81,4 @@ test_that("is par_model_spec", {
     nlag = 1
   )
   expect_s3_class(mod, class = "par_model_spec")
-)
+})
