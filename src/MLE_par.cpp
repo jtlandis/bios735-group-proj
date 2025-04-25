@@ -239,13 +239,14 @@ NumericMatrix simple_dot(const NumericVector& x, const NumericVector& y, double 
   return result;
 }
 
-Eigen::MatrixXd simple_dot2(const NumericVector& x, const NumericVector& y, double div) {
+// x * t(y)
+Eigen::MatrixXd simple_dot2(const NumericVector& x, const NumericVector& y, double div = 1.0) {
   int n = x.size();
   Eigen::MatrixXd result(n, n);
 
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < n; j++) {
-      result(i, j) = - x[i] * y[j] / div;
+      result(i, j) = x[i] * y[j] / div;
     }
   }
 
@@ -301,8 +302,8 @@ Eigen::MatrixXd update_H2(
     yts += diff[i] * step[i];
   }
 
-  Eigen::MatrixXd left = simple_dot2(step, diff, yts);
-  Eigen::MatrixXd right = simple_dot2(diff, step, yts);
+  Eigen::MatrixXd left = -simple_dot2(step, diff, yts);
+  Eigen::MatrixXd right = -simple_dot2(diff, step, yts);
   Eigen::MatrixXd sst = simple_dot2(step, step, yts);
 
   // simulate I - M
@@ -311,7 +312,9 @@ Eigen::MatrixXd update_H2(
     right(i, i) += 1;
   }
 
-  return left * H * right;
+  Eigen::MatrixXd result = left * H * right;
+
+  return result ; // + sst;
 
 }
 
@@ -713,7 +716,8 @@ Rcpp::List bfgs_cpp2(
   Rcpp::NumericVector gamma0,
   int maxIter = 100,
   double tol = 1e-5,
-  int verbose = 0
+  int verbose = 0,
+  int iter = 0
 ) {
 
   NumericVector beta = clone(beta0);
@@ -723,8 +727,7 @@ Rcpp::List bfgs_cpp2(
   double objective = -loglik_cpp(Y, X, beta, gamma);
   double old_objective = objective;
   double ep = INFINITY;
-  int iter = 1;
-  int alpha_index = 0;
+  // int alpha_index = 0;
   IntegerVector beta_slice(q);
   NumericVector beta_proxy(q);
   for (int i = 0; i < q; i++) {
@@ -771,7 +774,9 @@ Rcpp::List bfgs_cpp2(
 
   return Rcpp::List::create(
     Rcpp::Named("beta") = beta,
-    Rcpp::Named("gamma") = gamma
+    Rcpp::Named("gamma") = gamma,
+    Rcpp::Named("iter") = iter,
+    Rcpp::Named("objective") = -objective
   );
 }
 

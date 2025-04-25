@@ -255,8 +255,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // bfgs_cpp2
-Rcpp::List bfgs_cpp2(const Rcpp::NumericVector& Y, const Rcpp::NumericMatrix& X, Rcpp::NumericVector beta0, Rcpp::NumericVector gamma0, int maxIter, double tol, int verbose);
-RcppExport SEXP _pastasales_bfgs_cpp2(SEXP YSEXP, SEXP XSEXP, SEXP beta0SEXP, SEXP gamma0SEXP, SEXP maxIterSEXP, SEXP tolSEXP, SEXP verboseSEXP) {
+Rcpp::List bfgs_cpp2(const Rcpp::NumericVector& Y, const Rcpp::NumericMatrix& X, Rcpp::NumericVector beta0, Rcpp::NumericVector gamma0, int maxIter, double tol, int verbose, int iter);
+RcppExport SEXP _pastasales_bfgs_cpp2(SEXP YSEXP, SEXP XSEXP, SEXP beta0SEXP, SEXP gamma0SEXP, SEXP maxIterSEXP, SEXP tolSEXP, SEXP verboseSEXP, SEXP iterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -267,7 +267,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type maxIter(maxIterSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
     Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(bfgs_cpp2(Y, X, beta0, gamma0, maxIter, tol, verbose));
+    Rcpp::traits::input_parameter< int >::type iter(iterSEXP);
+    rcpp_result_gen = Rcpp::wrap(bfgs_cpp2(Y, X, beta0, gamma0, maxIter, tol, verbose, iter));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -313,7 +314,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_pastasales_loglik_grad_cpp", (DL_FUNC) &_pastasales_loglik_grad_cpp, 4},
     {"_pastasales_proj_beta_cpp", (DL_FUNC) &_pastasales_proj_beta_cpp, 2},
     {"_pastasales_bfgs_cpp", (DL_FUNC) &_pastasales_bfgs_cpp, 7},
-    {"_pastasales_bfgs_cpp2", (DL_FUNC) &_pastasales_bfgs_cpp2, 7},
+    {"_pastasales_bfgs_cpp2", (DL_FUNC) &_pastasales_bfgs_cpp2, 8},
     {"_pastasales_proj_grad_descent_cpp", (DL_FUNC) &_pastasales_proj_grad_descent_cpp, 9},
     {"_rcpp_module_boot_stan_fit4par_item_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4par_item_mod, 0},
     {"_rcpp_module_boot_stan_fit4par_item_intercept_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4par_item_intercept_mod, 0},
