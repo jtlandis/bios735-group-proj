@@ -502,16 +502,11 @@ par_model_mat <- function(
     covar <- expr(!!lag_formula + !!covar)
   }
 
-  formula2 <- expr(~!!covar)
+  # vanilla formula - no environment attached.
+  formula2 <- expr(!!y_sym ~ !!covar)
 
-  X <- eval(
-    expr(
-      model.matrix(
-        object = !!formula2,
-        data = data
-      )
-    )
-  )
+  formula <- as.formula(object = formula2, env = parent.frame())
+  X <- model.matrix(object = formula, data = data)
   gamma <- rep(0, ncol(X) - q)
   if (q > 0) {
     X <- X[, c(names(lags), colnames(X)[-which(colnames(X) %in% names(lags))])]
@@ -521,13 +516,35 @@ par_model_mat <- function(
   }
   Y <- pull(data, !!y_sym)
   attr(X, ".non_empty") <- apply(X, 2, function(x) which(x != 0) - 1L)
-  list(
-    Y = Y,
-    X = X,
-    beta = setNames(rep(0, q), names(lags)),
-    gamma = gamma,
-    .data = data
+  structure(
+    list(
+      Y = Y,
+      X = X,
+      beta = setNames(rep(0, q), names(lags)),
+      gamma = gamma,
+      .data = data,
+      formula = formula2
+    ),
+    class = "par_model_spec"
   )
+}
+
+#' @export
+print.par_model_spec <- function(x, ..., show_data = FALSE) {
+  cat("PAR model specification:\n")
+  cat(" -", format(x$formula), "\n")
+  cat(" - design dim:", nrow(x$X), "x", ncol(x$X), "\n")
+  cat(" - across", nrow(dplyr::group_data(x$.data)), "group(s)\n")
+  cat(
+    " - using",
+    length(x$beta),
+    "lag point(s) and",
+    length(x$gamma),
+    "covariate(s)\n"
+  )
+  if (show_data) {
+    print(x$.data)
+  }
 }
 
 #' @export

@@ -69,3 +69,13 @@ test_that("model_mat returns correct size w/ groups", {
   expect_equal(nrow(mod$X), 9)
   expect_equal(length(mod$Y), 9)
 })
+
+test_that("is par_model_spec", {
+  mod <- par_model_mat(
+    data = data_set_raw,
+    formula = QTY_B1_1 ~ PROMO_B1_1,
+    time = DATE,
+    nlag = 1
+  )
+  expect_s3_class(mod, class = "par_model_spec")
+)
