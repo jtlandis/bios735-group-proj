@@ -1,8 +1,8 @@
-simple_data <- subset(data_set_tidy, brand = "B1")
+simple_data <- subset(data_set_tidy, brand == "B1")
 
 test_that("par_model: Intercept only", {
   mod <- expect_no_error(
-    par_model_mat(simple_data, QTY ~ 1, nlag = 0, time = DATE)
+    par_model_mat(simple_data, QTY ~ 1, nlag = 0, time = DATE, groups = item)
   )
   ll_old <- expect_no_error(
     loglik_cpp(mod$Y, mod$X, mod$beta, mod$gamma)
@@ -15,7 +15,7 @@ test_that("par_model: Intercept only", {
 
 test_that("par_model: lags only", {
   mod <- expect_no_error(
-    par_model_mat(simple_data, QTY ~ -1, nlag = 3, time = DATE)
+    par_model_mat(simple_data, QTY ~ -1, nlag = 3, time = DATE, groups = item)
   )
   ll_old <- expect_no_error(
     loglik_cpp(mod$Y, mod$X, mod$beta, mod$gamma)
@@ -27,7 +27,13 @@ test_that("par_model: lags only", {
 
 test_that("par_model: lags and covar", {
   mod <- expect_no_error(
-    par_model_mat(simple_data, QTY ~ PROMO, nlag = 3, time = DATE)
+    par_model_mat(
+      simple_data,
+      QTY ~ PROMO,
+      nlag = 3,
+      time = DATE,
+      groups = item
+    )
   )
   ll_old <- expect_no_error(
     loglik_cpp(mod$Y, mod$X, mod$beta, mod$gamma)
