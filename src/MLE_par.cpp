@@ -314,7 +314,7 @@ Eigen::MatrixXd update_H2(
 
   Eigen::MatrixXd result = left * H * right;
 
-  return result ; // + sst;
+  return result + sst;
 
 }
 
