@@ -1,11 +1,14 @@
-
 # mcmc is random samples so its hard to know
 # if it is working _exactly_ the same.
 # we compare with original bfgs values
 test_that("par_mcmc works - Brand1 item 1", {
+  model <- par_model_mat(
+    data_set_raw,
+    QTY_B1_1 ~ PROMO_B1_1
+  )
   mcmc <- fit_par_mcmc(
-    y = data_set_raw$QTY_B1_1,
-    x = cbind(1, data_set_raw$PROMO_B1_1)
+    y = model$Y,
+    x = model$X
   )
   expect_equal(mcmc$beta, 0.409, tolerance = 1e-2)
   expect_equal(mcmc$gamma, c(1.407, 1.527), tolerance = 1e-2)
