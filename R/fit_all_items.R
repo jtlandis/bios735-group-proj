@@ -220,6 +220,7 @@ fit_par_bfgs <- function(
   verbose = FALSE,
   maxIter = 1000
 ) {
+  assert_valid_par_model_spec(mod)
   res <- bfgs_cpp(
     mod$Y,
     mod$X,
