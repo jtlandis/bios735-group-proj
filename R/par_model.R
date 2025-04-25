@@ -461,6 +461,7 @@ par_model_mat <- function(
   groups = NULL
 ) {
   time <- rlang::enexpr(time)
+  groups <- rlang::enexpr(groups)
   q <- nlag
   stopifnot(
     rlang::is_formula(formula),
@@ -478,6 +479,7 @@ par_model_mat <- function(
   data <- arrange(data, !!time)
   if (q > 0) {
     data <- data |>
+      group_by(across(!!groups)) |>
       mutate(!!!lags) |>
       slice(-seq_len(.env$q))
   }
