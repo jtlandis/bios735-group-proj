@@ -93,3 +93,167 @@ knitr::kable()
 
 
 ```
+
+
+The `pastasales` package attempts to model these time series data using a Auto-Regressive (AR) model. Below is the main model specification.
+
+$$
+\begin{align*}
+    & y_t | m_t \sim \text{Poisson}(m_t) \\
+    & m_t =\sum_{l=1}^q \beta_{l} y_{t-l} + \left(1-\sum_{l=1}^q \beta_l \right) \exp(\mathbf{x}_t^T \boldsymbol{\gamma})
+\end{align*}
+$$
+
+where for our priors we assume
+
+$$
+\begin{align*}
+    & \boldsymbol{\gamma} \sim N(\boldsymbol{\mu}, \Sigma_{\gamma}) \\
+    & \Sigma_{\gamma} \sim \text{Inv-Wishart}(\nu, \Psi)\\
+    & \tilde{\boldsymbol{\beta}}_i | \tau \sim \text{Dirichlet}(\boldsymbol{\alpha}), \ \beta_{i,l}=\tau \tilde{\beta}_{i,l} \\
+    & \tau \sim \text{Beta}(a,b)
+\end{align*}
+$$
+
+<!-- Should we mention the initial auto-regressive model? -->
+
+## Fitting a single subject
+
+The `data_set_raw` data set is structured conviently for single subject analysis.
+
+```{r}
+
+model_spec <- par_model_mat(
+  data = data_set_raw,
+  formula = QTY_B1_1 ~ PROMO_B1_1
+)
+
+model_spec
+
+mcmc_res <- fit_par_mcmc(
+  model_spec$Y,
+  model_spec$X,
+  length(model_spec$Y)
+)
+
+```
+
+With dplyr, we could model multiple items independently.
+
+```{r}
+
+all_items <- data_set_tidy |>
+  mutate(item = as.integer(item)) |>
+  group_by(brand, item) |>
+  summarise(
+    spec = list(par_model_mat(
+      data = pick(DATE, QTY, PROMO),
+      formula = QTY ~ PROMO,
+      nlag = 3
+    )),
+    fit = list(fit_par_bfgs(spec[[1]])),
+    .groups = "keep"
+  ) |>
+  unnest_wider(fit) |>
+  mutate(
+    # caching results before
+    # unnesting.
+    spec = {
+      spec[[1]]$beta <- beta[[1]]
+      spec[[1]]$gamma <- gamma[[1]]
+      spec}
+  ) |>
+  unnest_wider(beta) |>
+  unnest_wider(gamma)
+
+all_items <- all_items |>
+  mutate(
+    spec = {
+      this <- spec[[1]]
+      this$.data <- this$.data |>
+      mutate(
+        mt = get_par_mt(this)
+      )
+      spec[[1]] <- this
+      spec
+    }
+  )
+
+plot_spec <- function(spec) {
+
+  ggplot(spec$.data, aes(x = DATE, y = QTY)) +
+    geom_line(color = "grey") +
+#    geom_ribbon(aes(ymin = mt - 1.96 * sqrt(mt), ymax = mt + 1.96 * sqrt(mt)),
+#      alpha = 0.4, fill = "yellow") +
+    geom_line(aes(y = mt), color = "red", linetype = "dotted") +
+    theme_minimal()
+}
+
+# brand 1
+plot_spec(all_items$spec[[1]])
+# brand 2
+plot_spec(all_items$spec[[50]])
+# brand 3
+plot_spec(all_items$spec[[85]])
+# brand 4
+plot_spec(all_items$spec[[110]])
+
+```
+
+```r
+## large model ~ 45 min to run
+model_large <- par_model_mat(
+  data = data_set_tidy,
+  formula = QTY ~ PROMO*brand*item,
+  time = DATE,
+  groups = c(brand, item),
+  nlag = 4
+)
+model_large
+res <- fit_par_bfgs(model_large)
+model_large$beta <- res$beta
+model_large$gamma <- res$gamma
+```
+
+```{r}
+#| echo: false
+model_large <- mod_promo_brand_item
+```
+
+```{r}
+
+calc_deviance_slice <- function(spec, slice) {
+  par_deviance(spec$Y[slice], spec$X[slice,], spec$beta, spec$gamma)
+}
+
+model_large_dev <- model_large$.data |>
+  mutate(item = as.integer(item)) |>
+  group_by(brand, item) |>
+  summarise(
+    deviance = calc_deviance_slice(model_large, cur_group_rows())
+  )
+
+all_items_dev <- all_items |>
+  rowwise() |>
+  transmute(
+    brand = brand,
+    item = item,
+    deviance = par_deviance(spec$Y, spec$X, spec$beta, spec$gamma)
+  )
+
+
+all_items_dev |>
+  left_join(model_large_dev, by = c("brand", "item"),
+    suffix = c("_single", "_hierarchical")
+  ) |>
+  pivot_longer(
+    cols = -c(brand, item),
+    names_to = "model",
+    names_transform = \(x) sub("deviance_", "", x),
+    values_to = "deviance"
+  ) |>
+  ggplot(aes(x = model, y = deviance)) +
+    geom_point() +
+    geom_line(aes(group = interaction(brand, item))) +
+    facet_wrap(~brand) +
+    theme_minimal()
