@@ -10,3 +10,5 @@ data-raw
 ^inst/stan/vector_par$
 promotion_time_series.png
 proposal.pdf
+^doc$
+^Meta$
