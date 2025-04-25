@@ -18,7 +18,7 @@
     Output
       $beta
            lag1      lag2      lag3 
-      0.3302994 0.2160618 0.2842066 
+      0.3582281 0.1617883 0.1623495 
       
       $gamma
       named numeric(0)
@@ -30,12 +30,12 @@
       print(res)
     Output
       $beta
-               lag1          lag2          lag3 
-       0.3393938358 -0.0004108964  0.3352749123 
+             lag1        lag2        lag3 
+       0.38472482 -0.04287368  0.26482992 
       
       $gamma
       (Intercept)       PROMO 
-       0.80049809  0.08179525 
+        1.0959704   0.5965945 
       
 
 # par_model: estimate covariates by ave items
@@ -44,11 +44,11 @@
       print(res)
     Output
       $beta
-              lag1         lag2 
-       0.574515755 -0.004101278 
+            lag1       lag2 
+      0.67023309 0.08149927 
       
       $gamma
       (Intercept)       PROMO     brandB2     brandB3     brandB4 
-       0.18229385  0.14951757  0.01065082 -0.01781969  0.20425868 
+       1.84511733  1.11705547 -0.35467703 -0.07485625  0.46713457 
       
 
