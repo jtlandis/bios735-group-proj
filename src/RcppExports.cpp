@@ -247,10 +247,6 @@ BEGIN_RCPP
 END_RCPP
 }
 
-RcppExport SEXP _rcpp_module_boot_stan_fit4par_item_mod();
-RcppExport SEXP _rcpp_module_boot_stan_fit4par_item_intercept_mod();
-RcppExport SEXP _rcpp_module_boot_stan_fit4vector_par_mod();
-
 static const R_CallMethodDef CallEntries[] = {
     {"_pastasales_run_mcmc_par_cpp", (DL_FUNC) &_pastasales_run_mcmc_par_cpp, 7},
     {"_pastasales_get_fit_item_cpp", (DL_FUNC) &_pastasales_get_fit_item_cpp, 4},
@@ -268,9 +264,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_pastasales_loglik_cpp", (DL_FUNC) &_pastasales_loglik_cpp, 4},
     {"_pastasales_loglik_grad_cpp", (DL_FUNC) &_pastasales_loglik_grad_cpp, 4},
     {"_pastasales_proj_beta_cpp", (DL_FUNC) &_pastasales_proj_beta_cpp, 2},
-    {"_rcpp_module_boot_stan_fit4par_item_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4par_item_mod, 0},
-    {"_rcpp_module_boot_stan_fit4par_item_intercept_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4par_item_intercept_mod, 0},
-    {"_rcpp_module_boot_stan_fit4vector_par_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4vector_par_mod, 0},
     {NULL, NULL, 0}
 };
 
