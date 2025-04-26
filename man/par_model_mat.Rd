@@ -17,6 +17,44 @@ par_model_mat(data, formula, time = NULL, nlag = 1, groups = NULL)
 
 \item{groups}{Grouping variable.}
 }
+\value{
+a 'par_model_spec' object
+}
 \description{
 Design matrix for analysis
+}
+\examples{
+#single object
+model_spec <- par_model_mat(
+ data = data_set_raw,
+ formula = QTY_B1_1 ~ PROMO_B1_1
+)
+model_spec
+
+#multiple objects
+model_spec <- par_model_mat(
+ data = data_set_tidy,
+ formula = QTY ~ PROMO,
+ ### *** unless this is provided this model ***
+ ### *** will assume that data is already ***
+ ### *** ordered correctly ***
+ time = DATE,
+ ### *** if multiple timepoints are detected ***
+ ### *** per group, an error is thrown ***
+ groups = c(brand, item)
+)
+model_spec
+
+# more complicated model
+model_spec <- par_model_mat(
+ data = data_set_tidy,
+ #include brand in model as well as its interaction
+ # with promotion
+ formula = QTY ~ PROMO*brand,
+ time = DATE,
+ groups = c(brand, item)
+)
+model_spec
+
+
 }

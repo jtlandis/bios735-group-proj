@@ -4,7 +4,7 @@
 \alias{par_loglik}
 \title{Poisson Autoregressive Log-Likelihood}
 \usage{
-par_loglik(y, x, beta, gamma, mu = 0, q = length(beta))
+par_loglik(y, x, beta, gamma)
 }
 \arguments{
 \item{y}{Vector of counts (length T)}
@@ -14,14 +14,19 @@ par_loglik(y, x, beta, gamma, mu = 0, q = length(beta))
 \item{beta}{Vector of length q (autoregressive weights)}
 
 \item{gamma}{Vector of length p (covariate effects)}
-
-\item{mu}{Intercept (optional, scalar)}
-
-\item{q}{Number of lags}
 }
 \value{
 Log-likelihood value (numeric scalar)
 }
 \description{
 Computes the log-likelihood for a Poisson autoregressive model for a single item.
+}
+\examples{
+# Example usage
+model_spec <- par_model_mat(
+  data = data_set_raw,
+  formula = QTY_B1_1 ~ PROMO_B1_1
+)
+par_loglik(model_spec$Y, model_spec$X, model_spec$beta, model_spec$gamma)
+
 }

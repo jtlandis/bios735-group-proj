@@ -6,10 +6,7 @@
 \alias{pastasales-package}
 \title{BIOS735 Group Project (group 2)}
 \description{
-This package contains functions for analyzing pasta sales data. Included are a few rstan models for comparison.
-}
-\references{
-Stan Development Team (NA). RStan: the R interface to Stan. R package version 2.32.3. https://mc-stan.org
+This package contains functions for analyzing pasta sales data.
 }
 \author{
 \strong{Maintainer}: First Last \email{first.last@example.com}

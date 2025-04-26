@@ -9,7 +9,7 @@ fit_par_optim(y, x, q = 1)
 \arguments{
 \item{y}{Vector of counts}
 
-\item{x}{Matrix of covariates (T × p)}
+\item{x}{Matrix of covariates (T × (q + p))}
 
 \item{q}{Number of lags}
 }
