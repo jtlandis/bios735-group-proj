@@ -27,6 +27,7 @@
 #' @importFrom dplyr ungroup
 #' @importFrom magrittr %>%
 #' @importFrom RcppParallel RcppParallelLibs
+#' @importFrom rlang enexpr
 #' @importFrom rlang expr
 #' @importFrom stats optim
 #' @importFrom stats rbinom

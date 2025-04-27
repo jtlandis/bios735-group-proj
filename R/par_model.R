@@ -379,11 +379,12 @@ assert_no_dup_time <- function(
 #'
 #' # more complicated model
 #' model_spec <- par_model_mat(
-#'  data = data_set_tidy,
+#'  data_set_tidy,
 #'  #include brand in model as well as its interaction
 #'  # with promotion
 #'  formula = QTY ~ PROMO*brand,
 #'  time = DATE,
+#'  nlag = 4,
 #'  groups = c(brand, item)
 #' )
 #' model_spec
@@ -406,6 +407,7 @@ par_model_mat <- function(
     "`nlag` must be >= 0" = q >= 0
   )
   assert_no_dup_time(data, !!time, !!groups)
+  model_call <- match.call()
   y_sym <- rlang::f_lhs(formula)
   covar <- rlang::f_rhs(formula)
   seq_ <- seq_len(q)
@@ -461,7 +463,8 @@ par_model_mat <- function(
       beta = setNames(rep(0, q), names(lags)),
       gamma = gamma,
       .data = data,
-      formula = formula2
+      formula = formula2,
+      model_call = model_call
     ),
     class = "par_model_spec"
   )
@@ -483,6 +486,18 @@ print.par_model_spec <- function(x, ..., show_data = FALSE) {
   if (show_data) {
     print(x$.data)
   }
+}
+
+#' @export
+`[.par_model_spec` <- function(x, i) {
+  x$Y <- x$Y[i]
+  x$X <- x$X[i, ]
+  groups <- dplyr::groups(x$.data)
+  x$.data <- x$.data |>
+    dplyr::ungroup() |>
+    dplyr::slice(i) |>
+    dplyr::group_by(!!!groups)
+  x
 }
 
 #' PAR model deviation

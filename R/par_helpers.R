@@ -64,3 +64,29 @@ assert_valid_par_model_spec <- function(spec, .call = parent.frame()) {
   }
   invisible(spec)
 }
+
+get_data_pseudo_complete <- function(spec) {
+  y_sym <- rlang::f_lhs(spec$formula)
+  time <- spec$model_call$time
+  if (any(grepl("^lag[0-9]+$", colnames(spec$.data)))) {
+    data <- spec$.data |>
+      slice(1L) |>
+      dplyr::reframe(
+        "{y_sym}" := rev(dplyr::c_across(dplyr::matches("^lag[0-9]+$"))),
+        "{time}" := (!!time) - rev(seq_len(length(!!y_sym))),
+        ...pseudo_col = 1L
+      ) |>
+      dplyr::bind_rows(spec$.data) |>
+      select(-dplyr::matches("^lag[0-9]+$")) |>
+      dplyr::group_by(!!!dplyr::groups(spec$.data)) |>
+      dplyr::arrange(!!time, .by_group = TRUE)
+    psuedo_col <- pull(data, ...pseudo_col)
+    data <- select(data, -...pseudo_col)
+    attr(data, "original_data") <- which(is.na(psuedo_col))
+    data
+  } else {
+    data <- spec$.data
+    attr(data, "original_data") <- seq_len(nrow(data))
+    data
+  }
+}
