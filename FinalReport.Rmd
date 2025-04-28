@@ -1,11 +1,13 @@
 ---
 title: "Modeling Promotional Pasta Sales with Hierarchical Poisson Autoregression"
-author: "Group 2"
+bibliography: references.bib
+author: "Abby Foes, Zheng Lan, Justin Landis, Yu Liu, and Alec Reinhardt"
 output: 
-  html_document: 
+  pdf_document: 
     toc: true
     number_sections: true
-  pdf_document: 
+    citation_package: natbib
+  html_document: 
     toc: true
     number_sections: true
 ---
@@ -18,22 +20,11 @@ library(tidyverse)
 
 # Introduction
 
-We have identified a dataset of pasta sales from an Italian grocery store with observations made between January 2014 and December 2018. This dataset contains the quantity of each item sold for 1,798 time points. Along with this quantity of sales, we are provided with a brand identifier and a binary label of whether the item was promoted on that day as well. This time series data is thus hierarchical, with four brands and up to 45 unique items in each brand.
-
-The goal of this report is to investigate the following:
-
--   How do temporal trends and promotion-sales relationships vary across the four pasta brands?
--   Can we improve forecasting of sales by accounting for the hierarchical structure in the data compared to simply modeling each brand (and item) independently?
-
-
-
-We compare likelihood-based models (EM, Newton-Raphson), Bayesian inference (MCMC), and machine learning benchmarks (Random Forests, Hidden Markov Models), using predictive accuracy as the main evaluation metric.
-
 ## Background
 
-## Goals
+## Data Description
 
-# Data Description
+We have identified a dataset of pasta sales from an Italian grocery store with observations made between January 2014 and December 2018. This dataset contains the quantity of sales for 118 unique items across 1,798 equally-spaced time points (days). Along with this quantity of sales, we are provided with a brand identifier and a binary label of whether a given item was promoted on that day as well. This time series data is thus hierarchical, with four brands and up to 45 unique items in each brand.
 
 ```{r data-summary}
 data("data_set_tidy")
@@ -42,35 +33,43 @@ glimpse(data_set_tidy)
 
 Each row corresponds to daily sales for a specific item, along with brand and promotion indicators.
 
-# Model Derivation
 
-## Extended Poisson Autoregressive Model
+## Research Questions
 
-Let the sales outcome for item $i$ at time $t$ be denoted by $y_{it}$, where:
+The goal of this report is to investigate the following:
+
+-   How do temporal trends and promotion-sales relationships vary across the four pasta brands?
+-   Can we improve forecasting of sales by accounting for the hierarchical structure in the data compared to simply modeling each brand (and item) independently?
+
+We compare likelihood-based models (EM, Newton-Raphson), Bayesian inference (MCMC), and machine learning benchmarks (Random Forests, Hidden Markov Models), using out-of-sample mean squared error (MSE) as the main evaluation metric.
+
+## Exploratory Data Analysis
+
+
+
+
+# Methods
+
+## Motivation for autoregressive modeling
+To address our research goals, we consider several variations of time series models. The key commonality behind these model is that they all use information from the previous history of sales as a predictor of the current sales for a given item. These types of models are known as *autoregressive (AR) models*, which have been widely-used across disciplines for time series forecasting [@hamilton2020time]. Additionally, our models all include the current promotion status for a given item as a predictive of the current sales for that item.
+
+One issue that arises from this dataset is that the sales outcomes are discrete counts. Classical AR-based approaches, such as the Autoregressive Moving Average (ARMA), make normality assumptions about the current outcomes given past history. However, given the discrete data, a more appropriate assumption in our case is that the sales are distributed according to a Poisson distribution. We can then incorporate the autoregressive structure into the Poisson mean parameter, leading to a Poisson autoregressive model (PAR), formulated below. To deal with the inherent correlations across items within each brand, we also formulate a variation of this PAR model that can jointly model sales across all items, after accounting for similarities by brand.
+
+## Poisson Autoregression for single item modeling
+
+We first consider modeling each item independently. For a given item, denote the sales at timepoint $t$ by $y_{t}$, where $t=1,\ldots,T$. Also let $\mathbf{x}_t$ be a control vector including promotion indicator at time $t$ (and a $1$ element for an intercept).
+
+Based on the work by @brandt2001linear, we formulate the single-item Poisson autoregression model (PAR) as
 
 $$
-i \in \{1,\ldots,n\}, \quad t \in \{1,\ldots,T\}, \quad g_i \in \{1,\ldots,B\}
-$$
-
-Here, $g_i$ denotes the brand (group) to which item $i$ belongs.
-
-We define the model as:
-
-$$
-y_{t} \sim \text{Poisson}(m_{t})
-$$
-
-$$
+y_{t} \sim \text{Poisson}(m_{t}), \\
 m_t = \sum_{l=1}^{q} \beta_{l} y_{t-l} +
-\left(1 - \sum_{l=1}^{q} \beta_{l} \right) \cdot \exp(\mathbf{x}_t^\top \boldsymbol{\gamma})
+\left(1 - \sum_{l=1}^{q} \beta_{l} \right) \cdot \exp(\mathbf{x}_t'\boldsymbol{\gamma})
 $$
 
-Where:
+where $m_t$ is the mean Poisson parameter at time $t$, $\beta_l$ is the autoregressive coefficient for lag $l$ ($l=1,\ldots,q$), $\boldsymbol{\gamma}$ represents the effect of current covariates (including promotion) on sales. The time-varying Poisson mean can be interpreted as a weighted combination of previous observations of sales and the covariates, where the exponential term comes from the $\log$ link used for Poisson regression. We impose the constraints $\beta_l \geq 0$ and $\sum_{l=1}^q \beta_l < 1$ to ensure that the AR process is stationary (i.e. not diverging over time).
 
--   $\beta_{l}$: AR coefficients (constrained so sum $\leq$ 1)
--   $\gamma$: covariate effect vector
-
-## Likelihood Function
+## Likelihood Function for PAR
 
 Let $\boldsymbol{\theta}$ denote the full set of model parameters. The full likelihood across all items and times is:
 
@@ -91,16 +90,16 @@ $$ Where,
 
 $$
 m_t = \underbrace{\sum_{l=1}^{q} \beta_l y_{t-l}}_{\text{AR part}} +
-\underbrace{\left(1 - \sum{l=1}^{q} \beta_l \right)}_{\text{mixing weight}} \cdot
-\underbrace{\exp(\mathbf{x}t^\top \boldsymbol{\gamma})}_{\text{covariate part}}
+\underbrace{\left(1 - \sum_{l=1}^{q} \beta_l \right)}_{\text{mixing weight}} \cdot
+\underbrace{\exp( \mathbf{x}_t'\boldsymbol{\gamma})}_{\text{covariate part}}
 $$
 
-## Gradient (Score Function)
+## Gradient (Score Function) for PAR
 
 Define the following:
 
 -   $a_t = \sum_{l=q}^q \beta_ty_{t-l}$
--   $c_t = \exp(x_t^T\gamma)$
+-   $c_t = \exp(x_t^T\boldsymbol{\gamma})$
 -   $w = 1 - \sum\beta_t$
 -   $m_t = a_t + w \cdot c_t$
 
@@ -111,6 +110,27 @@ $$
 And the derivative of the log-likelihood with respect to $\beta_k$ is: $$
 \frac{\partial{\log\mathcal{L}}}{\partial\beta_k} = \sum_{t = q+ l}^T \left[ \frac{y_t}{m_t} - 1\right] \left[ y_{t-k} - c_t\right]
 $$
+## Poisson Vector Autoregression (PVAR) for multi-item modeling
+
+Next, we consider modeling more than one item at a time. Suppose we have $n$ items, $T$ timepoints and $B$ brands. Let $g_i \in \{1,\ldots,B\}$ denote the brand (group) to which item $i$ belongs.
+
+We propose a hierarchical Bayesian extension of the PAR model, which we refer to as the Poisson Vector Autoregression (PVAR) model. The sales $y_{it}$ for item $i$ and timepoint $t$ are modeled similarly to the PAR case as
+
+$$
+y_{it} | m_{it} \sim \text{Poisson}(m_{it}) \\
+m_{it} = \sum_{l=1}^q \beta_{i,l} y_{i,t-l}+\left(1-\sum_{l=1}^q \beta_{i,l} \right) \exp(\mathbf{x}_{it}' \boldsymbol{\gamma}_i)
+$$
+where each item is assumed to have its own autoregressive coefficients $\beta_{i,l}$ and covariate effects $\boldsymbol{\gamma}_i$. We use the following hierarchical priors on model parameters
+
+$$
+\boldsymbol{\gamma}_i \sim N(\boldsymbol{\mu}_{g_i}, \Sigma_{g_i}) \\
+\boldsymbol{\mu}_{g_i} \sim N(\boldsymbol{\mu}_0, \Sigma_0), \ \Sigma_{g_i} \sim \text{Inv-Wishart}(\nu, \Psi) \\
+\tilde{\boldsymbol{\beta}}_i | \tau_{g_i} \sim \text{Dirichlet}(\boldsymbol{\alpha}_{g_i}), \ \beta_{i,l}=\tau_{g_i} \tilde{\beta}_{i,l} \\
+\boldsymbol{\alpha}_{g_i} \sim \text{Dirichlet}(\alpha_0,\ldots,\alpha_0), \ \tau_{g_i} \sim \text{Beta}(a_{\tau}, b_{\tau})
+$$
+
+where $\boldsymbol{\mu}_0$, $\Sigma_0$, $\nu$, $\Psi$, $\alpha_0$, $a_{\tau}$, and $b_{\tau}$ are fixed hyperparameters. Essentially, these priors assume that the item-level for a given brand come from some common distribution. Effectively, this will pool information from within each brand when estimating the effects of previous sales and promotion for each item. We use Dirichlet and Beta distributions for the AR coefficients as a way to impose the constraint that $\sum_{l=1}^q \beta_{i,l} < 1$, which leads to stationarity in the Poisson AR processes for each item.
+
 
 # Estimation Methods
 
@@ -122,7 +142,7 @@ $$
 
 ## Bayesian Inference (MCMC)
 
--   Fit the independent Poisson Autoregression (PAR) model for each item with MCMC (currently implemented in STAN)
+-   Fit the independent Poisson Autoregression (PAR) model for each item with MCMC
 
 -   Place priors directly on model parameters
 
