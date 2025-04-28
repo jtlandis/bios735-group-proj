@@ -29,7 +29,7 @@
 #'   ggplot(plot_data, aes(DATE)) +
 #'     geom_line(aes(y = QTY, color = factor("Original Data"))) +
 #'     geom_line(aes(y = mt_original, color = factor("Original Model")),
-#'               linetype = "dotted", alpha = 0.5) +
+#'               linetype = "dotted", alpha = 0.8) +
 #'     geom_rug(data = ~subset(.x, PROMO == 1)) +
 #'     geom_line(aes(y = em_mt, color = factor("EM Model")),
 #'               linetype = "dotted", alpha = 0.5) +
@@ -39,7 +39,7 @@
 #'                                    "EM Model" = "red")) +
 #'     theme_classic() +
 #'     labs(color = "Model") +
-#'     theme(legend.position.inside = c(.8, .8))
+#'     theme(legend.position = c(.8, .8))
 #' }
 #' @return a list of em model (spec), orignal model, z embeddings, and loglikelihood
 #' @export
@@ -49,10 +49,11 @@ par_em_effective <- function(
   subset = NULL,
   tol = 1e-3,
   max_iter = 100,
-  diagnostic = FALSE
+  diagnostic = FALSE,
+  browse = FALSE
 ) {
-  spec <- model_spec
   pi <- 0.5
+
   data <- get_data_pseudo_complete(spec)
   original_slice <- attr(data, "original_data")
   data <- ungroup(data)
@@ -73,7 +74,7 @@ par_em_effective <- function(
     })
   )
 
-  ll <- res$ll
+  ll_original <- ll <- res$ll
   N <- nrow(data)
   # probability that promotion is effective
   z <- matrix(0, nrow = N, ncol = 2)
@@ -115,27 +116,45 @@ par_em_effective <- function(
     })
   )
   density_effective <- function() {
-    plot(
-      density(z[which_effective, 1]),
-      main = paste(round(100 * pi, 2), "% Promotion Effectiveness")
-    )
+    x <- z[which_effective, 1]
+    x <- x[!is.na(x)]
+    if (length(x) > 1) {
+      plot(
+        density(x),
+        main = paste(round(100 * pi, 2), "% Promotion Effectiveness")
+      )
+      rug(x)
+    }
   }
   eps <- Inf
   iter <- 0L
+  if (browse) {
+    browser()
+  }
   while (eps > tol & iter < max_iter) {
     iter <- iter + 1L
     ll0 <- ll
     #E step
     z[original_slice, 1] <- estimate(data, z[, 1], rep(1, N))
     z[original_slice, 2] <- estimate(data, z[, 2], rep(0, N))
+    rsum <- rowSums(z)
+    if (any(is_zero <- rsum == 0)) {
+      warning("Zero row sums detected")
+      rsum[is_zero] <- 1
+      z[is_zero, ] <- 0
+    }
+    z <- z / rsum
 
-    z <- z / rowSums(z)
-
-    pi <- mean(z[which_effective, 1])
+    pi <- mean(z[which_effective, 1], na.rm = TRUE)
 
     #m step
     m_model <- model_z(data, z[, 1])
-    res <- bfgs_cpp(m_model$Y, m_model$X, m_model$beta, m_model$gamma)
+    res <- bfgs_cpp(
+      m_model$Y,
+      m_model$X,
+      m_model$beta,
+      m_model$gamma
+    )
     m_model$beta <- beta <- res$beta
     m_model$gamma <- gamma <- res$gamma
     ll <- res$objective
@@ -172,6 +191,7 @@ par_em_effective <- function(
     original_spec = original_spec,
     z = z,
     pi = pi,
-    ll = ll
+    ll = ll,
+    ll_original = ll_original
   )
 }

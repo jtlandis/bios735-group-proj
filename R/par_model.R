@@ -415,11 +415,10 @@ par_model_mat <- function(
     lapply(function(l) expr(lag(!!y_sym, !!l)))
   lag_names <- rlang::syms(names(lags))
   # check if any duplicate times
-
-  data <- arrange(data, !!time)
+  data <- arrange(data, !!time) |>
+    group_by(across(!!groups))
   if (q > 0) {
     data <- data |>
-      group_by(across(!!groups)) |>
       mutate(!!!lags) |>
       slice(-seq_len(.env$q))
   }
@@ -444,7 +443,7 @@ par_model_mat <- function(
 
   # vanilla formula - no environment attached.
   formula2 <- expr(!!y_sym ~ !!covar)
-
+  #data <- select(data, !!time, across(groups), !!!collect_symbols(formula2))
   formula <- as.formula(object = formula2, env = parent.frame())
   X <- model.matrix(object = formula, data = data)
   gamma <- rep(0, ncol(X) - q)
@@ -454,6 +453,7 @@ par_model_mat <- function(
   } else {
     names(gamma) <- colnames(X)
   }
+  #data <- filter(data, dplyr::if_any(dplyr::everything(), Negate(is.na)))
   Y <- pull(data, !!y_sym)
   attr(X, ".non_empty") <- apply(X, 2, function(x) which(x != 0) - 1L)
   structure(

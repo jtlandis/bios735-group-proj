@@ -63,7 +63,7 @@ ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
 Summarising the data further we can see more specific information about each brand and item pair. For instance, most brands spent under 25% of their days promoting their items, with the exception of brand 2 which spent upwards of 90% of their days promoting their items. This over promotion will make it difficult to estimate any baseline sale rate for these items.
 
 ```{r}
-data_set_tidy |>
+brand_item_summary <- data_set_tidy |>
   mutate(item = as.integer(item)) |>
   group_by(brand, item) |>
   summarise(
@@ -75,25 +75,44 @@ data_set_tidy |>
     investment = days_promoted/n(),
     ratio = avg_sales_w_promo/avg_sales_wo_promo
   ) %>% {
-    .gg <- pivot_longer(.,cols = c(total_sales, investment, ratio)) |>
-      ggplot(aes(x = item, y = value)) +
+    .gg <- . |> mutate(
+      brand_item = paste(brand, item, sep = "_")
+    ) |> ungroup() |> arrange(total_sales) |> mutate(
+      brand_item = factor(brand_item, levels = unique(brand_item))
+    ) |> pivot_longer(cols = c(total_sales, investment, ratio)) |>
+      ggplot(aes(x = brand_item, y = value)) +
       geom_col(fill = "steelblue") +
-      facet_grid(cols = vars(brand), rows = vars(name), scales = "free") + scale_x_discrete() +
-      theme_minimal() +
-      labs(x = "Brand Item", y = "Metric")
-
+      facet_grid(cols = vars(brand), rows = vars(name), scales = "free",
+        space = "free_x") + scale_x_discrete() +
+      theme_bw() +
+      labs(x = "Brand Item", y = "Metric") +
+      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+    ggsave("../brand_item_summary.png", .gg)
     plot(.gg)
     .
 
   } |>
-arrange(desc(total_sales)) |>
-## show the top 3 and bottom 3 brand items
-slice(c(1:3, (n() - 2):n())) |>
-knitr::kable()
+arrange(desc(total_sales))
+
+
+brand_item_summary |>
+  ## show the top 3 and bottom 3 brand items
+  slice(c(1:3, (n() - 2):n())) |>
+  knitr::kable()
 
 
 ```
 
+```{r}
+
+ggplot(brand_item_summary, aes(x = brand, y = investment)) +
+geom_boxplot() +
+scale_y_continuous(labels = scales::percent_format()) +
+labs(x = "Brand Item", y = "Investment") +
+theme_minimal() +
+labs(title = "Investment by Brand Item", caption = "Each data point represents a brand item. Invesetment is defined as the percent of days promoted over the course of a time series.")
+
+```
 
 The `pastasales` package attempts to model these time series data using a Auto-Regressive (AR) model. Below is the main model specification.
 
@@ -224,15 +243,26 @@ model_large$gamma <- mod_promo_brand_item$mod_fit$gamma
 
 ```{r}
 
+get_deviance <- function(spec) {
+  assert_valid_par_model_spec(spec)
+  par_deviance(spec$Y, spec$X, spec$beta, spec$gamma)
+}
+
+get_loglik <- function(spec) {
+  assert_valid_par_model_spec(spec)
+  par_loglik(spec$Y, spec$X, spec$beta, spec$gamma)
+}
+
 calc_deviance_slice <- function(spec, slice) {
-  par_deviance(spec$Y[slice], spec$X[slice,], spec$beta, spec$gamma)
+  get_deviance(spec[slice])
 }
 
 model_large_dev <- model_large$.data |>
   mutate(item = as.integer(item)) |>
   group_by(brand, item) |>
   summarise(
-    deviance = calc_deviance_slice(model_large, cur_group_rows())
+    deviance = calc_deviance_slice(model_large, cur_group_rows()),
+    loglik = get_loglik(model_large[cur_group_rows()])
   )
 
 all_items_dev <- all_items |>
@@ -240,7 +270,8 @@ all_items_dev <- all_items |>
   transmute(
     brand = brand,
     item = item,
-    deviance = par_deviance(spec$Y, spec$X, spec$beta, spec$gamma)
+    deviance = get_deviance(spec),
+    loglik = get_loglik(spec)
   )
 
 
@@ -250,12 +281,91 @@ all_items_dev |>
   ) |>
   pivot_longer(
     cols = -c(brand, item),
-    names_to = "model",
+    names_to = c("metric","model"),
+    names_pattern = "(.*)_(.*)",
     names_transform = \(x) sub("deviance_", "", x),
-    values_to = "deviance"
+    values_to = "value"
   ) |>
   ggplot(aes(x = model, y = deviance)) +
     geom_point() +
     geom_line(aes(group = interaction(brand, item))) +
     facet_wrap(~brand) +
     theme_minimal()
+```
+
+It is not necessarily true that the hierarchical model is always better than the single model. The deviance between the two are very similar.
+
+A  big issue with our data is that promotion is not a good predictor of sales. This may be seen as a red heirring as some promotions fail to be effeective on sales, while others days are extremely effective.
+
+We can attempt to model some latent variable of promotion effectiveness as some bournoli distribution.
+
+```{r, em}
+model_all <- data_set_tidy |>
+  group_by(brand, item) |>
+  summarise(
+    model = par_model_mat(pick(DATE, QTY, PROMO),
+      QTY ~ PROMO,
+      nlag = 4
+    ) |> list(),
+    em = {print(cur_group());par_em_effective(model[[1]], col = PROMO,
+          subset = PROMO == 1, tol = 1e-6, diagnostic = TRUE) |> list()}
+  ) |>
+  rowwise() |>
+  mutate(
+    pi = em$pi,
+    ll = em$ll,
+    ll_old = em$ll_original
+  )
+
+model_all <- mutate(model_all,
+  item = as.integer(item),
+  deviance = get_deviance(em$original_spec),
+  deviance_em = get_deviance(em$spec),
+  loglik_em = ll,
+) |> arrange(brand, item)
+
+plot_data <- all_items_dev |>
+  left_join(model_large_dev, by = c("brand", "item"),
+    suffix = c("_single", "_hierarchical")
+  ) |>
+  left_join(
+    select(model_all, brand, item, deviance_em, loglik_em, pi)
+  ) |>
+  pivot_longer(
+    cols = -c(brand, item, pi),
+    names_to = c("metric","model"),
+    names_pattern = "(.*)_(.*)",
+    names_transform = \(x) sub("deviance_", "", x),
+    values_to = "value"
+  )
+
+.gg <- plot_data |>
+  mutate(
+    metric = case_when(
+      metric == "loglik" ~ "-loglik",
+      TRUE ~ metric
+    ),
+    value = abs(value)
+  ) |>
+  ggplot(aes(x = model, y = value,  color = pi)) +
+    geom_point() +
+    geom_line(aes(group = interaction(brand, item))) +
+    facet_grid(vars(metric), vars(brand), scales = "free_y") +
+    theme_bw() +
+    scale_x_discrete(limits = c("hierarchical", "single", "em")) +
+    scale_color_viridis_c() +
+    labs(title = "Model Comparison - EM")
+    
+ggsave("../EM-loglik_deviance.png", .gg)
+.gg
+    
+plot_data |>
+  ggplot(aes(x = model, y = loglik,  color = pi)) +
+    geom_point() +
+    geom_line(aes(group = interaction(brand, item))) +
+    facet_wrap(~brand) +
+    theme_minimal() +
+    scale_x_discrete(limits = c("hierarchical", "single", "em")) +
+    scale_color_viridis_c() 
+
+```

@@ -65,7 +65,12 @@ NumericVector get_mt_cpp(const NumericVector& Y, const NumericMatrix& X,
     for (int l = 0; l < q; ++l) {
       ar_term += beta[l] * X(t, l);
     }
-    mt[t] = ar_term + (1.0 - sum_beta) * cov_parts[t];
+    double mt_t = ar_term + (1.0 - sum_beta) * cov_parts[t];
+    if (mt_t < 0) {
+      mt[t] = 0;
+    } else {
+      mt[t] = mt_t;
+    }
   }
   return mt;
 }

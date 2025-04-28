@@ -66,16 +66,22 @@ assert_valid_par_model_spec <- function(spec, .call = parent.frame()) {
 }
 
 get_data_pseudo_complete <- function(spec) {
-  y_sym <- rlang::f_lhs(spec$formula)
+  y_sym <- rlang::f_lhs(spec$model_call$formula)
   time <- spec$model_call$time
   if (any(grepl("^lag[0-9]+$", colnames(spec$.data)))) {
     data <- spec$.data |>
       slice(1L) |>
       dplyr::reframe(
         "{y_sym}" := rev(dplyr::c_across(dplyr::matches("^lag[0-9]+$"))),
-        "{time}" := (!!time) - rev(seq_len(length(!!y_sym))),
         ...pseudo_col = 1L
-      ) |>
+      )
+    if (!is.null(time)) {
+      data <- data |>
+        mutate(
+          "{time}" := (!!time) - rev(seq_len(length(!!y_sym)))
+        )
+    }
+    data <- data |>
       dplyr::bind_rows(spec$.data) |>
       select(-dplyr::matches("^lag[0-9]+$")) |>
       dplyr::group_by(!!!dplyr::groups(spec$.data)) |>
@@ -89,4 +95,46 @@ get_data_pseudo_complete <- function(spec) {
     attr(data, "original_data") <- seq_len(nrow(data))
     data
   }
+}
+
+walk_nodes_do <- function(nodes, on_name) {
+  N <- length(nodes)
+  node_seq <- seq_len(N)
+  if (is.call(nodes)) {
+    node_seq <- node_seq[-1L]
+  }
+  for (i in rev(node_seq)) {
+    node <- nodes[[i]]
+    if (is.call(node)) {
+      nodes[[i]] <- walk_nodes_do(node, on_name)
+    } else if (is.name(node)) {
+      nodes[[i]] <- on_name(node)
+    }
+  }
+  nodes
+}
+
+collect_symbols <- function(call) {
+  symbols <- hashtab()
+
+  hashkeys <- function(h) {
+    val <- vector("list", numhash(h))
+    idx <- 0
+    maphash(h, function(k, v) {
+      idx <<- idx + 1
+      val[idx] <<- list(k)
+    })
+    val
+  }
+
+  append_symbols <- function(node) {
+    if (is.null(symbols[[node]])) {
+      symbols[[node]] <- TRUE
+    }
+    node
+  }
+
+  walk_nodes_do(call, append_symbols)
+
+  hashkeys(symbols)
 }
