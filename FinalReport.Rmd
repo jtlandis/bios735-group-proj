@@ -62,12 +62,14 @@ We first consider modeling each item independently. For a given item, denote the
 Based on the work by @brandt2001linear, we formulate the single-item Poisson autoregression model (PAR) as
 
 $$
-y_{t} \sim \text{Poisson}(m_{t}), \\
+y_{t} \sim \text{Poisson}(m_{t})
+$$
+$$
 m_t = \sum_{l=1}^{q} \beta_{l} y_{t-l} +
 \left(1 - \sum_{l=1}^{q} \beta_{l} \right) \cdot \exp(\mathbf{x}_t'\boldsymbol{\gamma})
 $$
 
-where $m_t$ is the mean Poisson parameter at time $t$, $\beta_l$ is the autoregressive coefficient for lag $l$ ($l=1,\ldots,q$), $\boldsymbol{\gamma}$ represents the effect of current covariates (including promotion) on sales. The time-varying Poisson mean can be interpreted as a weighted combination of previous observations of sales and the covariates, where the exponential term comes from the $\log$ link used for Poisson regression. We impose the constraints $\beta_l \geq 0$ and $\sum_{l=1}^q \beta_l < 1$ to ensure that the AR process is stationary (i.e. not diverging over time).
+where $m_t$ is the mean Poisson parameter at time $t$, $\beta_l$ is the autoregressive coefficient for lag $l$ ($l=1,\ldots,q$), and $\boldsymbol{\gamma}$ represents the effect of current covariates (including promotion) on sales. The time-varying Poisson mean can be interpreted as a weighted combination of previous observations of sales and the covariates, where the exponential term comes from the $\log$ link used for Poisson regression. We impose the constraints $\beta_l \geq 0$ and $\sum_{l=1}^q \beta_l < 1$ to ensure that the AR process is stationary (i.e. not diverging over time).
 
 ## Likelihood Function for PAR
 
@@ -103,13 +105,16 @@ Define the following:
 -   $w = 1 - \sum\beta_t$
 -   $m_t = a_t + w \cdot c_t$
 
-Then, the derivative of the log-likelihood with respect to $\gamma_j$ is: $$
+Then, the derivative of the log-likelihood with respect to $\gamma_j$ is: 
+$$
 \frac{\partial{\log\mathcal{L}}}{\partial\gamma_j} = \sum_{t = q+ l}^T \left[ \frac{y_t}{m_t} - 1\right] \cdot w \cdot c_t \cdot x_{tj}
 $$
 
-And the derivative of the log-likelihood with respect to $\beta_k$ is: $$
+And the derivative of the log-likelihood with respect to $\beta_k$ is: 
+$$
 \frac{\partial{\log\mathcal{L}}}{\partial\beta_k} = \sum_{t = q+ l}^T \left[ \frac{y_t}{m_t} - 1\right] \left[ y_{t-k} - c_t\right]
 $$
+
 ## Poisson Vector Autoregression (PVAR) for multi-item modeling
 
 Next, we consider modeling more than one item at a time. Suppose we have $n$ items, $T$ timepoints and $B$ brands. Let $g_i \in \{1,\ldots,B\}$ denote the brand (group) to which item $i$ belongs.
@@ -117,15 +122,22 @@ Next, we consider modeling more than one item at a time. Suppose we have $n$ ite
 We propose a hierarchical Bayesian extension of the PAR model, which we refer to as the Poisson Vector Autoregression (PVAR) model. The sales $y_{it}$ for item $i$ and timepoint $t$ are modeled similarly to the PAR case as
 
 $$
-y_{it} | m_{it} \sim \text{Poisson}(m_{it}) \\
+y_{it} | m_{it} \sim \text{Poisson}(m_{it}) $$
+$$
 m_{it} = \sum_{l=1}^q \beta_{i,l} y_{i,t-l}+\left(1-\sum_{l=1}^q \beta_{i,l} \right) \exp(\mathbf{x}_{it}' \boldsymbol{\gamma}_i)
 $$
 where each item is assumed to have its own autoregressive coefficients $\beta_{i,l}$ and covariate effects $\boldsymbol{\gamma}_i$. We use the following hierarchical priors on model parameters
 
 $$
-\boldsymbol{\gamma}_i \sim N(\boldsymbol{\mu}_{g_i}, \Sigma_{g_i}) \\
-\boldsymbol{\mu}_{g_i} \sim N(\boldsymbol{\mu}_0, \Sigma_0), \ \Sigma_{g_i} \sim \text{Inv-Wishart}(\nu, \Psi) \\
-\tilde{\boldsymbol{\beta}}_i | \tau_{g_i} \sim \text{Dirichlet}(\boldsymbol{\alpha}_{g_i}), \ \beta_{i,l}=\tau_{g_i} \tilde{\beta}_{i,l} \\
+\boldsymbol{\gamma}_i \sim N(\boldsymbol{\mu}_{g_i}, \Sigma_{g_i})
+$$
+$$
+\boldsymbol{\mu}_{g_i} \sim N(\boldsymbol{\mu}_0, \Sigma_0), \ \Sigma_{g_i} \sim \text{Inv-Wishart}(\nu, \Psi)
+$$
+$$
+\tilde{\boldsymbol{\beta}}_i | \tau_{g_i} \sim \text{Dirichlet}(\boldsymbol{\alpha}_{g_i}), \ \beta_{i,l}=\tau_{g_i} \tilde{\beta}_{i,l}
+$$
+$$
 \boldsymbol{\alpha}_{g_i} \sim \text{Dirichlet}(\alpha_0,\ldots,\alpha_0), \ \tau_{g_i} \sim \text{Beta}(a_{\tau}, b_{\tau})
 $$
 
