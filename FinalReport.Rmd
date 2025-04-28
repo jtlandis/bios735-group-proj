@@ -1,50 +1,138 @@
 ---
 title: "Modeling Promotional Pasta Sales with Hierarchical Poisson Autoregression"
-author: "Group 2"
+bibliography: references.bib
+author: "Abby Foes, Zheng Lan, Justin Landis, Yu Liu, and Alec Reinhardt"
 output: 
-  html_document: 
-    toc: true
-    number_sections: true
   pdf_document: 
     toc: true
+    number_sections: true
+    citation_package: natbib
+  html_document: 
+    toc: true
+    toc_float: true
+    code_folding: hide
     number_sections: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(tidyverse)
-#library(pastasales) 
+library(pastasales) 
 ```
 
 # Introduction
-We analyze pasta sales data from an Italian grocery store, consisting of 116 items across four brands, observed daily from 2014 to 2018. Our goal is to model item-level sales with dependence on past observations, promotional status, and latent brand effects.
-
-We compare likelihood-based models (EM, Newton-Raphson), Bayesian inference (MCMC), and machine learning benchmarks (Random Forests, Hidden Markov Models), using predictive accuracy as the main evaluation metric.
 
 ## Background
 
-## Goals
+## Data Description
 
-# Data Description
+We have identified a dataset of pasta sales from an Italian grocery store with observations made between January 2014 and December 2018. This dataset contains the quantity of sales for 118 unique items across 1,798 equally-spaced time points (days). Along with this quantity of sales, we are provided with a brand identifier and a binary label of whether a given item was promoted on that day as well. This time series data is thus hierarchical, with four brands and up to 45 unique items in each brand.
+
 ```{r data-summary}
 data("data_set_tidy")
 glimpse(data_set_tidy)
 ```
+
 Each row corresponds to daily sales for a specific item, along with brand and promotion indicators.
 
-# Model Derivation
+## Research Questions
 
-## Extended Poisson Autoregressive Model
+The goal of this report is to investigate the following:
 
-Let the sales outcome for item $i$ at time $t$ be denoted by $y_{it}$, where:
+-   How do temporal trends and promotion-sales relationships vary across the four pasta brands?
+-   Can we improve forecasting of sales by accounting for the hierarchical structure in the data compared to simply modeling each brand (and item) independently?
 
-$$
-i \in \{1,\ldots,n\}, \quad t \in \{1,\ldots,T\}, \quad g_i \in \{1,\ldots,B\}
-$$
+We compare likelihood-based models (BFGS), Bayesian inference (MCMC, Metropolis-Hastings), and machine learning benchmarks (Random Forests), using out-of-sample mean squared error (MSE) as the main evaluation metric.
 
-Here, $g_i$ denotes the brand (group) to which item $i$ belongs.
+## Exploratory Data Analysis
 
-We define the model as:
+Below is a plot of mean sales of products for each brand, transformed to a log-scale. We can qualitatively see that as the proportion of brand-specific items on promotion increases, as does the quantity sold, in general. We will further investigate these within-brand trends.
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+# Plot Mean time series for each brand
+data_eda <- pastasales::data_set_tidy %>%
+  mutate(item_id = factor(paste0(brand, "_", item))) %>%
+  mutate(
+    brand = factor(paste0("Brand ", as.numeric(factor(brand))), levels = paste0("Brand ", 1:4))
+  )
+
+data_eda_brand <- data_eda %>%
+  group_by(brand, DATE, .add = TRUE) %>%
+  summarise(QTY_brand_mean = mean(QTY),
+            PROMO_brand_prop = mean(PROMO),
+            .groups = "drop")
+
+data_eda_brand %>%
+  ggplot(aes(x = DATE, y = QTY_brand_mean, color = brand))+
+  geom_line(aes(alpha = PROMO_brand_prop), linewidth = 0.5) +  # color by promo status
+  facet_wrap(vars(brand))+
+  theme_bw(base_size = 16)+
+  scale_x_date(date_breaks = "6 month", 
+               date_labels = "%m/%y")+
+  scale_y_log10(limits = c(0.25, 100)) +
+  scale_color_brewer(palette = 'Set1')+
+  scale_alpha(range = c(0.15, 1))+
+  #scale_color_gradient(low = 'blue', high = 'orange')+
+  ylab('Mean Sales (log-scale)')+
+  xlab('Date')+
+  theme(legend.position = "right",
+        panel.grid.minor = element_blank())+
+  labs(alpha = "Promotion")+
+  guides(color = "none")
+```
+
+We can also observe the within-brand correlation via the heatmap below. It is of particular interest that brands 3 and 4 have increased correlation, as evident by the bright color sections in the last two blocks of the diagonal. 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+### Make correlation heatmap across items, showing within and across brand variations
+data_eda_items <- prepare_data_allitems(pastasales::data_set_raw)
+brand <- data_eda_items$G
+B <- data_eda_items$num_brands
+
+# get correlation matrix
+corr_data_items <- cor(data_eda_items$Y)
+
+# make gaps to group by brand
+brand_sizes <- table(brand)
+gaps <- cumsum(brand_sizes)
+gaps <- gaps[-length(gaps)]
+
+# make col/rownames to only show 1 label per brand
+custom_names <- rep("", length(brand))
+for (b in 1:B) {
+  inds_b <- which(brand == b)
+  custom_names[round(mean(inds_b))] <- paste0("Brand ", b) # assign middle index for name
+}
+rownames(corr_data_items) <- custom_names
+colnames(corr_data_items) <- custom_names
+
+pheatmap(
+  corr_data_items,
+  cluster_rows = FALSE,
+  cluster_cols = FALSE,
+  gaps_row = gaps,    # 👈 nice visible brand separations
+  gaps_col = gaps,
+  border_color = NA,
+  show_rownames = TRUE,
+  show_colnames = TRUE,
+  annotation_legend = FALSE,
+  main = "Item-Item Correlations Grouped by Brand"
+)
+```
+
+# Methods
+
+## Motivation for autoregressive modeling
+
+To address our research goals, we consider several variations of time series models. The key commonality behind these model is that they all use information from the previous history of sales as a predictor of the current sales for a given item. These types of models are known as *autoregressive (AR) models*, which have been widely-used across disciplines for time series forecasting [@hamilton2020time]. Additionally, our models all include the current promotion status for a given item as a predictive of the current sales for that item.
+
+One issue that arises from this dataset is that the sales outcomes are discrete counts. Classical AR-based approaches, such as the Autoregressive Moving Average (ARMA), make normality assumptions about the current outcomes given past history. However, given the discrete data, a more appropriate assumption in our case is that the sales are distributed according to a Poisson distribution. We can then incorporate the autoregressive structure into the Poisson mean parameter, leading to a Poisson autoregressive model (PAR), formulated below. To deal with the inherent correlations across items within each brand, we also formulate a variation of this PAR model that can jointly model sales across all items, after accounting for similarities by brand.
+
+## Poisson Autoregression for single item modeling
+
+We first consider modeling each item independently. For a given item, denote the sales at timepoint $t$ by $y_{t}$, where $t=1,\ldots,T$. Also let $\mathbf{x}_t$ be a control vector including promotion indicator at time $t$ (and a $1$ element for an intercept).
+
+Based on the work by @brandt2001linear, we formulate the single-item Poisson autoregression model (PAR) as
 
 $$
 y_{t} \sim \text{Poisson}(m_{t})
@@ -52,15 +140,12 @@ $$
 
 $$
 m_t = \sum_{l=1}^{q} \beta_{l} y_{t-l} +
-\left(1 - \sum_{l=1}^{q} \beta_{l} \right) \cdot \exp(\mathbf{x}_t^\top \boldsymbol{\gamma})
+\left(1 - \sum_{l=1}^{q} \beta_{l} \right) \cdot \exp(\mathbf{x}_t'\boldsymbol{\gamma})
 $$
 
-Where:
+where $m_t$ is the mean Poisson parameter at time $t$, $\beta_l$ is the autoregressive coefficient for lag $l$ ($l=1,\ldots,q$), and $\boldsymbol{\gamma}$ represents the effect of current covariates (including promotion) on sales. The time-varying Poisson mean can be interpreted as a weighted combination of previous observations of sales and the covariates, where the exponential term comes from the $\log$ link used for Poisson regression. We impose the constraints $\beta_l \geq 0$ and $\sum_{l=1}^q \beta_l < 1$ to ensure that the AR process is stationary (i.e. not diverging over time).
 
-* $\beta_{l}$: AR coefficients (constrained so sum $\leq$ 1)
-* $\gamma$: covariate effect vector
-
-## Likelihood Function
+### Likelihood Function for PAR
 
 Let $\boldsymbol{\theta}$ denote the full set of model parameters. The full likelihood across all items and times is:
 
@@ -77,86 +162,110 @@ $$
 \sum_{t=q+1}^T \left[
 y_{t} \log(m_{t}) - m_{t} - \log(y_{t}!)
 \right]
-$$
-Where, 
+$$ Where,
 
 $$
 m_t = \underbrace{\sum_{l=1}^{q} \beta_l y_{t-l}}_{\text{AR part}} +
-\underbrace{\left(1 - \sum{l=1}^{q} \beta_l \right)}_{\text{mixing weight}} \cdot
-\underbrace{\exp(\mathbf{x}t^\top \boldsymbol{\gamma})}_{\text{covariate part}}
+\underbrace{\left(1 - \sum_{l=1}^{q} \beta_l \right)}_{\text{mixing weight}} \cdot
+\underbrace{\exp( \mathbf{x}_t'\boldsymbol{\gamma})}_{\text{covariate part}}
 $$
 
+### Gradient (Score Function) for PAR
 
-## Gradient (Score Function)
+Define the following:
 
-Define the following: 
+-   $a_t = \sum_{l=q}^q \beta_ty_{t-l}$
+-   $c_t = \exp(x_t^T\boldsymbol{\gamma})$
+-   $w = 1 - \sum\beta_t$
+-   $m_t = a_t + w \cdot c_t$
 
-* $a_t = \sum_{l=q}^q \beta_ty_{t-l}$
-* $c_t = \exp(x_t^T\gamma)$
-* $w = 1 - \sum\beta_t$
-* $m_t = a_t + w \cdot c_t$
-
-Then, the derivative of the log-likelihood with respect to $\gamma_j$ is:
-$$
+Then, the derivative of the log-likelihood with respect to $\gamma_j$ is: $$
 \frac{\partial{\log\mathcal{L}}}{\partial\gamma_j} = \sum_{t = q+ l}^T \left[ \frac{y_t}{m_t} - 1\right] \cdot w \cdot c_t \cdot x_{tj}
 $$
 
-And the derivative of the log-likelihood with respect to $\beta_k$ is: 
-$$
+And the derivative of the log-likelihood with respect to $\beta_k$ is: $$
 \frac{\partial{\log\mathcal{L}}}{\partial\beta_k} = \sum_{t = q+ l}^T \left[ \frac{y_t}{m_t} - 1\right] \left[ y_{t-k} - c_t\right]
 $$
 
-# Estimation Methods
+## Poisson Vector Autoregression (PVAR) for multi-item modeling
 
-## EM Algorithm
-* E-step: Applicable if we add new random intercepts (either item or brand level)
-* M-step: Maximize the expected log-likelihood with respect to model parameters $\gamma$, $\beta$, and $\tau$
+Next, we consider modeling more than one item at a time. Suppose we have $n$ items, $T$ timepoints and $B$ brands. Let $g_i \in \{1,\ldots,B\}$ denote the brand (group) to which item $i$ belongs.
 
-## Newton-Raphson
-* Use gradients and Hessians of the log-likelihood to iteratively update parameters
+We propose a hierarchical Bayesian extension of the PAR model, which we refer to as the Poisson Vector Autoregression (PVAR) model. The sales $y_{it}$ for item $i$ and timepoint $t$ are modeled similarly to the PAR case as
 
-## Bayesian Inference (MCMC)
-* Fit the independent Poisson Autoregression (PAR) model for each item with MCMC (currently implemented in STAN)
-* Place priors directly on model parameters
+$$
+y_{it} | m_{it} \sim \text{Poisson}(m_{it}) 
+$$
 
-* $\tau$: mixing weight for AR component, $\beta = \tau \tilde{\boldsymbol{\beta}}$
+$$
+m_{it} = \sum_{l=1}^q \beta_{i,l} y_{i,t-l}+\left(1-\sum_{l=1}^q \beta_{i,l} \right) \exp(\mathbf{x}_{it}' \boldsymbol{\gamma}_i)
+$$ where each item is assumed to have its own autoregressive coefficients $\beta_{i,l}$ and covariate effects $\boldsymbol{\gamma}_i$. We use the following hierarchical priors on model parameters
 
-Priors:
+$$
+\boldsymbol{\gamma}_i \sim N(\boldsymbol{\mu}_{g_i}, \Sigma_{g_i})
+$$
 
-* $\boldsymbol{\gamma} \sim \mathcal{N}(\boldsymbol{\mu}, \Sigma_\gamma)$
-* $\Sigma_\gamma \sim \text{Inv-Wishart}(\nu, \Psi)$ — (approximated as fixed in Stan)
-* $\tilde{\boldsymbol{\beta}} \sim \text{Dirichlet}(\alpha)$
-* $\tau \sim \text{Beta}(a, b)$
+$$
+\boldsymbol{\mu}_{g_i} \sim N(\boldsymbol{\mu}_0, \Sigma_0), \ \Sigma_{g_i} \sim \text{Inv-Wishart}(\nu, \Psi)
+$$
 
-# Model Evaluation and Predictive Performance
+$$
+\tilde{\boldsymbol{\beta}}_i | \tau_{g_i} \sim \text{Dirichlet}(\boldsymbol{\alpha}_{g_i}), \ \beta_{i,l}=\tau_{g_i} \tilde{\beta}_{i,l}
+$$
 
-We evaluate models using holdout-based prediction: the final 10–20% of each item’s time series is reserved for testing.
+$$
+\boldsymbol{\alpha}_{g_i} \sim \text{Dirichlet}(\alpha_0,\ldots,\alpha_0), \ \tau_{g_i} \sim \text{Beta}(a_{\tau}, b_{\tau})
+$$
+
+where $\boldsymbol{\mu}_0$, $\Sigma_0$, $\nu$, $\Psi$, $\alpha_0$, $a_{\tau}$, and $b_{\tau}$ are fixed hyperparameters. Essentially, these priors assume that the parameters for items within a given brand come from some common distribution. Effectively, this will pool information from within each brand when estimating the effects of previous sales and promotion for each item. We use Dirichlet and Beta distributions for the AR coefficients as a way to impose the constraint that $\sum_{l=1}^q \beta_{i,l} < 1$, which leads to stationarity in the Poisson AR processes for each item.
+
+## Model Evaluation and Predictive Performance
+
+We evaluate models using holdout-based prediction: the final 20% of each item’s time series is reserved for testing.
 
 ```{r eval-metrics}
 # Example: results <- evaluate_holdout(...)
 # knitr::kable(results)
 ```
 
-** Evaluation Metrics **
- - Root Mean Squared Error (RMSE)
- - Mean Absolute Error (MAE)
- - Log Predictive Density (for Bayesian models)
- - Posterior predictive interval coverage (for MCMC)
+# Results
 
-# Machine Learning Benchmarks
+## Likelihood-Based PAR Model
 
-## Random Forest
+### EM Algorithm
+
+-   E-step: Applicable if we add new random intercepts (either item or brand level)
+-   M-step: Maximize the expected log-likelihood with respect to model parameters $\gamma$, $\beta$, and $\tau$
+
+## Bayesian Inference
+
+### MCMC
+
+-   Fit the independent Poisson Autoregression (PAR) model for each item with MCMC
+
+-   Place priors directly on model parameters
+
+-   $\tau$: mixing weight for AR component, $\beta = \tau \tilde{\boldsymbol{\beta}}$
+
+Priors:
+
+-   $\boldsymbol{\gamma} \sim \mathcal{N}(\boldsymbol{\mu}, \Sigma_\gamma)$
+-   $\Sigma_\gamma \sim \text{Inv-Wishart}(\nu, \Psi)$ — (approximated as fixed in Stan)
+-   $\tilde{\boldsymbol{\beta}} \sim \text{Dirichlet}(\alpha)$
+-   $\tau \sim \text{Beta}(a, b)$
+
+## Machine Learning Approaches
+
+### ARMA Model
+
+### Random Forest
+
 ```{r rf-model}
 # rf_fit <- fit_random_forest(...)
 ```
 
-## Hidden Markov Model
-```{r hmm-model}
-# hmm_fit <- fit_hmm(...)
-```
-
 # Summary and Discussion
- - Which methods give the most accurate predictions for sparse, autocorrelated data?
- - What is the trade-off between hierarchical shrinkage and item-specific flexibility?
- - Are machine learning models (e.g., random forests) better suited for forecasting than structured generative models?
- 
+
+-   Which methods give the most accurate predictions for sparse, autocorrelated data?
+-   What is the trade-off between hierarchical shrinkage and item-specific flexibility?
+-   Are machine learning models (e.g., random forests) better suited for forecasting than structured generative models?
