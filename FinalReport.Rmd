@@ -71,7 +71,7 @@ $$
 
 where $m_t$ is the mean Poisson parameter at time $t$, $\beta_l$ is the autoregressive coefficient for lag $l$ ($l=1,\ldots,q$), and $\boldsymbol{\gamma}$ represents the effect of current covariates (including promotion) on sales. The time-varying Poisson mean can be interpreted as a weighted combination of previous observations of sales and the covariates, where the exponential term comes from the $\log$ link used for Poisson regression. We impose the constraints $\beta_l \geq 0$ and $\sum_{l=1}^q \beta_l < 1$ to ensure that the AR process is stationary (i.e. not diverging over time).
 
-## Likelihood Function for PAR
+### Likelihood Function for PAR
 
 Let $\boldsymbol{\theta}$ denote the full set of model parameters. The full likelihood across all items and times is:
 
@@ -96,7 +96,7 @@ m_t = \underbrace{\sum_{l=1}^{q} \beta_l y_{t-l}}_{\text{AR part}} +
 \underbrace{\exp( \mathbf{x}_t'\boldsymbol{\gamma})}_{\text{covariate part}}
 $$
 
-## Gradient (Score Function) for PAR
+### Gradient (Score Function) for PAR
 
 Define the following:
 
@@ -141,19 +141,34 @@ $$
 \boldsymbol{\alpha}_{g_i} \sim \text{Dirichlet}(\alpha_0,\ldots,\alpha_0), \ \tau_{g_i} \sim \text{Beta}(a_{\tau}, b_{\tau})
 $$
 
-where $\boldsymbol{\mu}_0$, $\Sigma_0$, $\nu$, $\Psi$, $\alpha_0$, $a_{\tau}$, and $b_{\tau}$ are fixed hyperparameters. Essentially, these priors assume that the item-level for a given brand come from some common distribution. Effectively, this will pool information from within each brand when estimating the effects of previous sales and promotion for each item. We use Dirichlet and Beta distributions for the AR coefficients as a way to impose the constraint that $\sum_{l=1}^q \beta_{i,l} < 1$, which leads to stationarity in the Poisson AR processes for each item.
+where $\boldsymbol{\mu}_0$, $\Sigma_0$, $\nu$, $\Psi$, $\alpha_0$, $a_{\tau}$, and $b_{\tau}$ are fixed hyperparameters. Essentially, these priors assume that the parameters for items within a given brand come from some common distribution. Effectively, this will pool information from within each brand when estimating the effects of previous sales and promotion for each item. We use Dirichlet and Beta distributions for the AR coefficients as a way to impose the constraint that $\sum_{l=1}^q \beta_{i,l} < 1$, which leads to stationarity in the Poisson AR processes for each item.
 
 
-# Estimation Methods
+## Model Evaluation and Predictive Performance
 
-## EM Algorithm
+We evaluate models using holdout-based prediction: the final 20% of each item’s time series is reserved for testing.
+
+```{r eval-metrics}
+# Example: results <- evaluate_holdout(...)
+# knitr::kable(results)
+```
+
+\*\* Evaluation Metrics \*\* - Root Mean Squared Error (RMSE) - Mean Absolute Error (MAE) - Log Predictive Density (for Bayesian models) - Posterior predictive interval coverage (for MCMC)
+
+
+# Results
+
+## Likelihood-Based PAR Model
+
+### EM Algorithm
 
 -   E-step: Applicable if we add new random intercepts (either item or brand level)
 -   M-step: Maximize the expected log-likelihood with respect to model parameters $\gamma$, $\beta$, and $\tau$
 
 
-## Bayesian Inference (MCMC)
+## Bayesian Inference
 
+### MCMC
 -   Fit the independent Poisson Autoregression (PAR) model for each item with MCMC
 
 -   Place priors directly on model parameters
@@ -167,20 +182,12 @@ Priors:
 -   $\tilde{\boldsymbol{\beta}} \sim \text{Dirichlet}(\alpha)$
 -   $\tau \sim \text{Beta}(a, b)$
 
-# Model Evaluation and Predictive Performance
 
-We evaluate models using holdout-based prediction: the final 10–20% of each item’s time series is reserved for testing.
+## Machine Learning Approaches
 
-```{r eval-metrics}
-# Example: results <- evaluate_holdout(...)
-# knitr::kable(results)
-```
+### ARMA Model
 
-\*\* Evaluation Metrics \*\* - Root Mean Squared Error (RMSE) - Mean Absolute Error (MAE) - Log Predictive Density (for Bayesian models) - Posterior predictive interval coverage (for MCMC)
-
-# Machine Learning Benchmarks
-
-## Random Forest
+### Random Forest
 
 ```{r rf-model}
 # rf_fit <- fit_random_forest(...)
