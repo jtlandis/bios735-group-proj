@@ -31,8 +31,6 @@ true inv-Hessian matrix.}
 
 \item{trace_mod}{trace modulus. 0 is no tracing, 1 is
 tracing each step, 2 is tracing every 2 steps, etc.}
-
-\item{step_size}{step size in gradient descent}
 }
 \value{
 optimized parameters

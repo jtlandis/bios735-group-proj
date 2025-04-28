@@ -140,7 +140,6 @@ simple_pois_bfgs <- function(
 #' @param max_iter maximum number of iterations
 #' @param trace_mod trace modulus. 0 is no tracing, 1 is
 #'  tracing each step, 2 is tracing every 2 steps, etc.
-#' @param step_size step size in gradient descent
 #' @return optimized parameters
 general_bfgs <- function(
   params,
@@ -154,10 +153,6 @@ general_bfgs <- function(
   force(f)
   force(g)
   force(H)
-  force(step_size)
-  if (!is.numeric(step_size)) {
-    stop("step_size must be numeric")
-  }
   ident <- diag(length(params))
   p <- function(params, ...) {
     -H %*% g(params, ...)

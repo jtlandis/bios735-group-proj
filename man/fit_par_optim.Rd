@@ -19,3 +19,6 @@ A list with estimated parameters and log-likelihood
 \description{
 Fit a non-hierarchical PAR model using maximum likelihood and optim().
 }
+\seealso{
+\code{fit_par_bfgs()}
+}

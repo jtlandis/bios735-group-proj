@@ -7,6 +7,9 @@ get_par_mt <- function(spec) {
   get_mt_cpp(spec$Y, spec$X, spec$beta, spec$gamma)
 }
 
+#' check if an object is a par_model_spec object
+#' @param x an object to test
+#' @export
 is_par_model_spec <- function(x) {
   inherits(x, "par_model_spec")
 }
@@ -15,6 +18,10 @@ collapse <- function(x) {
   paste(x, collapse = ", ")
 }
 
+#' validate a par_model_spec object
+#' @param spec a par_model_spec object
+#' @param .call parent frame
+#' @export
 assert_valid_par_model_spec <- function(spec, .call = parent.frame()) {
   err <- NULL
   if (!is_par_model_spec(spec)) {
@@ -73,14 +80,10 @@ get_data_pseudo_complete <- function(spec) {
       slice(1L) |>
       dplyr::reframe(
         "{y_sym}" := rev(dplyr::c_across(dplyr::matches("^lag[0-9]+$"))),
+        "{time}" := if (!is.null(time))
+          (!!time) - rev(seq_len(length(!!y_sym))) else NULL,
         ...pseudo_col = 1L
       )
-    if (!is.null(time)) {
-      data <- data |>
-        mutate(
-          "{time}" := (!!time) - rev(seq_len(length(!!y_sym)))
-        )
-    }
     data <- data |>
       dplyr::bind_rows(spec$.data) |>
       select(-dplyr::matches("^lag[0-9]+$")) |>

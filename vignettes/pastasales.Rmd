@@ -87,7 +87,7 @@ brand_item_summary <- data_set_tidy |>
       theme_bw() +
       labs(x = "Brand Item", y = "Metric") +
       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
-    ggsave("../brand_item_summary.png", .gg)
+    #ggsave("../brand_item_summary.png", .gg)
     plot(.gg)
     .
 
@@ -244,12 +244,12 @@ model_large$gamma <- mod_promo_brand_item$mod_fit$gamma
 ```{r}
 
 get_deviance <- function(spec) {
-  assert_valid_par_model_spec(spec)
+  pastasales::assert_valid_par_model_spec(spec)
   par_deviance(spec$Y, spec$X, spec$beta, spec$gamma)
 }
 
 get_loglik <- function(spec) {
-  assert_valid_par_model_spec(spec)
+  pastasales::assert_valid_par_model_spec(spec)
   par_loglik(spec$Y, spec$X, spec$beta, spec$gamma)
 }
 
@@ -283,10 +283,10 @@ all_items_dev |>
     cols = -c(brand, item),
     names_to = c("metric","model"),
     names_pattern = "(.*)_(.*)",
-    names_transform = \(x) sub("deviance_", "", x),
     values_to = "value"
   ) |>
-  ggplot(aes(x = model, y = deviance)) +
+  filter(metric == "deviance") |>
+  ggplot(aes(x = model, y = value)) +
     geom_point() +
     geom_line(aes(group = interaction(brand, item))) +
     facet_wrap(~brand) +
@@ -300,72 +300,72 @@ A  big issue with our data is that promotion is not a good predictor of sales. T
 We can attempt to model some latent variable of promotion effectiveness as some bournoli distribution.
 
 ```{r, em}
-model_all <- data_set_tidy |>
-  group_by(brand, item) |>
-  summarise(
-    model = par_model_mat(pick(DATE, QTY, PROMO),
-      QTY ~ PROMO,
-      nlag = 4
-    ) |> list(),
-    em = {print(cur_group());par_em_effective(model[[1]], col = PROMO,
-          subset = PROMO == 1, tol = 1e-6, diagnostic = TRUE) |> list()}
-  ) |>
-  rowwise() |>
-  mutate(
-    pi = em$pi,
-    ll = em$ll,
-    ll_old = em$ll_original
-  )
-
-model_all <- mutate(model_all,
-  item = as.integer(item),
-  deviance = get_deviance(em$original_spec),
-  deviance_em = get_deviance(em$spec),
-  loglik_em = ll,
-) |> arrange(brand, item)
-
-plot_data <- all_items_dev |>
-  left_join(model_large_dev, by = c("brand", "item"),
-    suffix = c("_single", "_hierarchical")
-  ) |>
-  left_join(
-    select(model_all, brand, item, deviance_em, loglik_em, pi)
-  ) |>
-  pivot_longer(
-    cols = -c(brand, item, pi),
-    names_to = c("metric","model"),
-    names_pattern = "(.*)_(.*)",
-    names_transform = \(x) sub("deviance_", "", x),
-    values_to = "value"
-  )
-
-.gg <- plot_data |>
-  mutate(
-    metric = case_when(
-      metric == "loglik" ~ "-loglik",
-      TRUE ~ metric
-    ),
-    value = abs(value)
-  ) |>
-  ggplot(aes(x = model, y = value,  color = pi)) +
-    geom_point() +
-    geom_line(aes(group = interaction(brand, item))) +
-    facet_grid(vars(metric), vars(brand), scales = "free_y") +
-    theme_bw() +
-    scale_x_discrete(limits = c("hierarchical", "single", "em")) +
-    scale_color_viridis_c() +
-    labs(title = "Model Comparison - EM")
-    
-ggsave("../EM-loglik_deviance.png", .gg)
-.gg
-    
-plot_data |>
-  ggplot(aes(x = model, y = loglik,  color = pi)) +
-    geom_point() +
-    geom_line(aes(group = interaction(brand, item))) +
-    facet_wrap(~brand) +
-    theme_minimal() +
-    scale_x_discrete(limits = c("hierarchical", "single", "em")) +
-    scale_color_viridis_c() 
+#model_all <- data_set_tidy |>
+#  group_by(brand, item) |>
+#  summarise(
+#    model = par_model_mat(pick(DATE, QTY, PROMO),
+#      QTY ~ PROMO,
+#      nlag = 4
+#    ) |> list(),
+#    em = {print(cur_group());par_em_effective(model[[1]], col = PROMO,
+#          subset = PROMO == 1, tol = 1e-6, diagnostic = TRUE) |> list()}
+#  ) |>
+#  rowwise() |>
+#  mutate(
+#    pi = em$pi,
+#    ll = em$ll,
+#    ll_old = em$ll_original
+#  )
+#
+#model_all <- mutate(model_all,
+#  item = as.integer(item),
+#  deviance = get_deviance(em$original_spec),
+#  deviance_em = get_deviance(em$spec),
+#  loglik_em = ll,
+#) |> arrange(brand, item)
+#
+#plot_data <- all_items_dev |>
+#  left_join(model_large_dev, by = c("brand", "item"),
+#    suffix = c("_single", "_hierarchical")
+#  ) |>
+#  left_join(
+#    select(model_all, brand, item, deviance_em, loglik_em, pi)
+#  ) |>
+#  pivot_longer(
+#    cols = -c(brand, item, pi),
+#    names_to = c("metric","model"),
+#    names_pattern = "(.*)_(.*)",
+#    names_transform = \(x) sub("deviance_", "", x),
+#    values_to = "value"
+#  )
+#
+#.gg <- plot_data |>
+#  mutate(
+#    metric = case_when(
+#      metric == "loglik" ~ "-loglik",
+#      TRUE ~ metric
+#    ),
+#    value = abs(value)
+#  ) |>
+#  ggplot(aes(x = model, y = value,  color = pi)) +
+#    geom_point() +
+#    geom_line(aes(group = interaction(brand, item))) +
+#    facet_grid(vars(metric), vars(brand), scales = "free_y") +
+#    theme_bw() +
+#    scale_x_discrete(limits = c("hierarchical", "single", "em")) +
+#    scale_color_viridis_c() +
+#    labs(title = "Model Comparison - EM")
+#
+#ggsave("../EM-loglik_deviance.png", .gg)
+#.gg
+#
+#plot_data |>
+#  ggplot(aes(x = model, y = loglik,  color = pi)) +
+#    geom_point() +
+#    geom_line(aes(group = interaction(brand, item))) +
+#    facet_wrap(~brand) +
+#    theme_minimal() +
+#    scale_x_discrete(limits = c("hierarchical", "single", "em")) +
+#    scale_color_viridis_c()
 
 ```

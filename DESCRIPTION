@@ -1,6 +1,6 @@
 Package: pastasales
 Title: What the Package Does (One Line, Title Case)
-Version: 0.0.1.9001
+Version: 0.0.1.9002
 Authors@R:
     person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
 Description: What the package does (one paragraph).
@@ -13,6 +13,7 @@ Depends:
 LazyData: true
 Imports:
     dplyr,
+    graphics,
     magrittr,
     methods,
     optimx,
@@ -22,12 +23,14 @@ Imports:
     rlang,
     stats,
     tibble,
-    tidyr
+    tidyr,
+    utils
 Suggests:
     ggplot2,
     knitr,
     mvtnorm,
     rmarkdown,
+    scales,
     testthat (>= 3.0.0)
 Biarch: true
 LinkingTo:

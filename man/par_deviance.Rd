@@ -8,13 +8,13 @@ This is the deviance function used for poisson models}
 par_deviance(Y, X, beta, gamma)
 }
 \arguments{
+\item{Y}{Vector of counts (length T)}
+
+\item{X}{Matrix of covariates of dimension T × p}
+
 \item{beta}{Vector of length q (autoregressive weights)}
 
 \item{gamma}{Vector of length p (covariate effects)}
-
-\item{y}{Vector of counts (length T)}
-
-\item{x}{Matrix of covariates of dimension T × p}
 }
 \description{
 PAR model deviation

@@ -47,11 +47,12 @@ model_spec
 
 # more complicated model
 model_spec <- par_model_mat(
- data = data_set_tidy,
+ data_set_tidy,
  #include brand in model as well as its interaction
  # with promotion
  formula = QTY ~ PROMO*brand,
  time = DATE,
+ nlag = 4,
  groups = c(brand, item)
 )
 model_spec

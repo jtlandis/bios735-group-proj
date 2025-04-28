@@ -25,10 +25,16 @@
 #' @importFrom dplyr starts_with
 #' @importFrom dplyr summarise
 #' @importFrom dplyr ungroup
+#' @importFrom graphics rug
 #' @importFrom magrittr %>%
 #' @importFrom RcppParallel RcppParallelLibs
+#' @importFrom rlang abort
 #' @importFrom rlang enexpr
 #' @importFrom rlang expr
+#' @importFrom stats as.formula
+#' @importFrom stats density
+#' @importFrom stats dpois
+#' @importFrom stats model.matrix
 #' @importFrom stats optim
 #' @importFrom stats rbinom
 #' @importFrom stats rgamma
@@ -36,6 +42,9 @@
 #' @importFrom stats rpois
 #' @importFrom stats setNames
 #' @importFrom tibble tibble
+#' @importFrom utils hashtab
+#' @importFrom utils maphash
+#' @importFrom utils numhash
 #' @useDynLib pastasales, .registration = TRUE
 ## usethis namespace: end
 NULL

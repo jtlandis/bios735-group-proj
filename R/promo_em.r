@@ -4,9 +4,9 @@
 #' @param subset A logical expression to subset the data.
 #' @param tol The tolerance for convergence.
 #' @param max_iter The maximum number of iterations.
-#' @param diagnostic Whether to print diagnostic information.
+#' @param show_plots Whether to print diagnostic information.
 #' @examples
-#' model_spec <- filter(
+#' model_spec <- dplyr::filter(
 #'      data_set_tidy,
 #'      brand %in% c("B1", "B3"),
 #'      item %in% c("1", "3")) |>
@@ -21,10 +21,10 @@
 #'    col = PROMO,
 #'    subset = PROMO == 1,
 #'    tol = 1e-6,
-#'    diagnostic = TRUE)
+#'    show_plots = TRUE)
 #' if (require("ggplot2")) {
-#'   plot_data <- ungroup(em_out$spec$.data) |>
-#'      mutate(em_mt = get_par_mt(em_out$spec),
+#'   plot_data <- dplyr::ungroup(em_out$spec$.data) |>
+#'      dplyr::mutate(em_mt = get_par_mt(em_out$spec),
 #'             mt_original = get_par_mt(em_out$original_spec))
 #'   ggplot(plot_data, aes(DATE)) +
 #'     geom_line(aes(y = QTY, color = factor("Original Data"))) +
@@ -49,8 +49,7 @@ par_em_effective <- function(
   subset = NULL,
   tol = 1e-3,
   max_iter = 100,
-  diagnostic = FALSE,
-  browse = FALSE
+  show_plots = FALSE
 ) {
   pi <- 0.5
 
@@ -128,9 +127,6 @@ par_em_effective <- function(
   }
   eps <- Inf
   iter <- 0L
-  if (browse) {
-    browser()
-  }
   while (eps > tol & iter < max_iter) {
     iter <- iter + 1L
     ll0 <- ll
@@ -159,7 +155,7 @@ par_em_effective <- function(
     m_model$gamma <- gamma <- res$gamma
     ll <- res$objective
     eps <- abs(ll - ll0) / abs(ll0)
-    if (diagnostic) {
+    if (show_plots) {
       density_effective()
     }
   }

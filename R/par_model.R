@@ -29,6 +29,8 @@ par_loglik <- function(y, x, beta, gamma) {
 #' @param x Matrix of covariates (T × (q + p))
 #' @param q Number of lags
 #'
+#' @seealso `fit_par_bfgs()`
+#'
 #' @return A list with estimated parameters and log-likelihood
 #' @export
 fit_par_optim <- function(y, x, q = 1) {
@@ -502,8 +504,8 @@ print.par_model_spec <- function(x, ..., show_data = FALSE) {
 
 #' PAR model deviation
 #' This is the deviance function used for poisson models
-#' @param y Vector of counts (length T)
-#' @param x Matrix of covariates of dimension T × p
+#' @param Y Vector of counts (length T)
+#' @param X Matrix of covariates of dimension T × p
 #' @param beta Vector of length q (autoregressive weights)
 #' @param gamma Vector of length p (covariate effects)
 #' @export

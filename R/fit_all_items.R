@@ -52,180 +52,29 @@ summarize_par_fits <- function(fits) {
     tidyr::unnest_wider(gamma, names_sep = "_g")
 }
 
-#' Fit the Vector PAR model in Stan
+#' Fit PAR Model Using BFGS Optimization
 #'
-#' @param stan_data A list from prepare_data_stan_vectorpar()
-#' @param stan_file Path to the Stan file
-#' @param iter Number of iterations
-#' @param chains Number of chains
-#' @param seed Random seed
+#' Fits a PAR model using the BFGS optimization algorithm.
 #'
-#' @return A cmdstanr fit object
-#' @export
-fit_vector_par_stan <- function(
-  stan_data,
-  stan_file = "inst/stan/vector_par.stan",
-  iter = 1000,
-  chains = 4,
-  seed = 123
-) {
-  #if (!requireNamespace("cmdstanr", quietly = TRUE)) {
-  #  stop("cmdstanr is required. Install it with: install.packages('cmdstanr')")
-  #}
-
-  mod <- cmdstanr::cmdstan_model(
-    system.file("stan/vector_par.stan", package = "pastasales")
-  )
-  #mod <- stanmodels$vector_par
-  fit <- mod$sample(
-    data = stan_data,
-    iter_sampling = iter,
-    iter_warmup = iter,
-    chains = chains,
-    seed = seed,
-    refresh = 500
-  )
-
-  return(fit)
-}
-
-#' Prepare and Fit PAR Model for a Single Item using Stan
+#' @param spec Model specification (output from `make_par_model_spec()`)
+#' @param global_tol Tolerance for convergence of the global optimization
+#' @param verbose Verbosity level (0 = silent, 1 = progress, 2 = detailed)
+#' @param maxIter Maximum number of iterations for the optimization
 #'
-#' @param df A data.frame with columns `y`, `time`, and covariates (e.g., `promo`)
-#' @param q Number of AR lags
-#' @param stan_file Path to Stan file (default = "inst/stan/par_item.stan")
-#' @param iter Number of iterations (default = 1000)
-#' @param chains Number of MCMC chains (default = 4)
-#' @param seed Random seed
-#'
-#' @return A cmdstanr fit object
-#' @export
-fit_par_item <- function(
-  df,
-  q = 1,
-  stan_file = "inst/stan/par_item.stan",
-  iter = 1000,
-  chains = 4,
-  seed = 123
-) {
-  stopifnot("y" %in% names(df), "time" %in% names(df))
-
-  # Add AR lags
-  for (l in 1:q) {
-    df[[paste0("lag", l)]] <- dplyr::lag(df$y, l)
-  }
-  df <- df %>%
-    dplyr::filter(dplyr::if_all(dplyr::starts_with("lag"), ~!is.na(.)))
-
-  y <- df$y
-  X <- as.matrix(df |> dplyr::select(dplyr::starts_with("promo")))
-
-  T_obs <- length(y)
-  p <- ncol(X)
-
-  stan_data <- list(
-    T_obs = T_obs,
-    q = q,
-    p = p,
-    y = y,
-    X = X,
-    mu_gamma = rep(0, p),
-    Sigma_gamma = diag(p),
-    alpha = rep(1 / q, q),
-    a_tau = 1,
-    b_tau = 1
-  )
-
-  #mod <- stanmodels$par_item
-  mod <- cmdstanr::cmdstan_model(
-    system.file("stan/par_item.stan", package = "pastasales")
-  )
-  fit <- mod$sample(
-    data = stan_data,
-    iter_sampling = iter,
-    iter_warmup = iter,
-    chains = chains,
-    seed = seed,
-    refresh = 500
-  )
-  return(fit)
-}
-
-#' Prepare and Fit PAR Model for a Single Item using Stan (with Item Intercept)
-#'
-#' @param df A data.frame with columns `y`, `time`, and covariates (e.g., `promo`)
-#' @param q Number of AR lags
-#' @param stan_file Path to Stan file (default = "inst/stan/fit_par_intercept.stan")
-#' @param iter Number of iterations (default = 1000)
-#' @param chains Number of MCMC chains (default = 4)
-#' @param seed Random seed
-#'
-#' @return A cmdstanr fit object
-#' @export
-fit_par_item_int <- function(
-  df,
-  q = 1,
-  stan_file = "inst/stan/par_item_intercept.stan",
-  iter = 1000,
-  chains = 4,
-  seed = 123
-) {
-  stopifnot("y" %in% names(df), "time" %in% names(df))
-
-  # Add AR lags
-  for (l in 1:q) {
-    df[[paste0("lag", l)]] <- dplyr::lag(df$y, l)
-  }
-  df <- df %>%
-    dplyr::filter(dplyr::if_all(dplyr::starts_with("lag"), ~!is.na(.)))
-
-  y <- df$y
-  X <- as.matrix(df |> dplyr::select(dplyr::starts_with("promo")))
-
-  T_obs <- length(y)
-  p <- ncol(X)
-
-  stan_data <- list(
-    T_obs = T_obs,
-    q = q,
-    p = p,
-    y = y,
-    X = X,
-    mu_gamma = rep(0, p),
-    Sigma_gamma = diag(p),
-    alpha = rep(1 / q, q),
-    a_tau = 1,
-    b_tau = 1
-  )
-
-  #mod <- stanmodels$par_item_intercept
-  mod <- cmdstanr::cmdstan_model(
-    system.file("stan/par_item_intercept.stan", package = "pastasales")
-  )
-  fit <- mod$sample(
-    data = stan_data,
-    iter_sampling = iter,
-    iter_warmup = iter,
-    chains = chains,
-    seed = seed,
-    refresh = 500
-  )
-  return(fit)
-}
-
+#' @return A list containing the fitted model parameters
 #' @export
 fit_par_bfgs <- function(
-  mod,
+  spec,
   global_tol = 0.1,
   verbose = FALSE,
   maxIter = 1000
 ) {
-  assert_valid_par_model_spec(mod)
+  assert_valid_par_model_spec(spec)
   res <- bfgs_cpp(
-    mod$Y,
-    mod$X,
-    mod$beta,
-    mod$gamma,
+    spec$Y,
+    spec$X,
+    spec$beta,
+    spec$gamma,
     verbose = verbose,
     maxIter = maxIter
   )
@@ -238,8 +87,8 @@ fit_par_bfgs <- function(
       cat("Inverse Hessian Reset. Current eps:", eps, "\n")
     }
     res <- bfgs_cpp(
-      mod$Y,
-      mod$X,
+      spec$Y,
+      spec$X,
       res$beta,
       res$gamma,
       verbose = verbose,

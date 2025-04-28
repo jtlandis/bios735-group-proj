@@ -152,7 +152,7 @@ mle_params <- function(y, x, alpha, betas, gamma, sigma2) {
   gammas <- grid$gamma
   sigmas <- grid$sigma2
   for (i in seq_len(nrow(grid))) {
-    ll_out[i] <- ll(
+    ll_out[i] <- nar_ll(
       y = y,
       x = x,
       alpha = alphas[i],
@@ -163,7 +163,7 @@ mle_params <- function(y, x, alpha, betas, gamma, sigma2) {
   }
   #out <- dplyr::rowwise(grid) |>
   #  dplyr::mutate(
-  #    ll = ll(
+  #    ll = nar_ll(
   #      y = .env$y,
   #      x = .env$x,
   #      alpha = alpha,
