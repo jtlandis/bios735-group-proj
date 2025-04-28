@@ -17,7 +17,15 @@ library(tidyverse)
 ```
 
 # Introduction
-We analyze pasta sales data from an Italian grocery store, consisting of 116 items across four brands, observed daily from 2014 to 2018. Our goal is to model item-level sales with dependence on past observations, promotional status, and latent brand effects.
+
+We have identified a dataset of pasta sales from an Italian grocery store with observations made between January 2014 and December 2018. This dataset contains the quantity of each item sold for 1,798 time points. Along with this quantity of sales, we are provided with a brand identifier and a binary label of whether the item was promoted on that day as well. This time series data is thus hierarchical, with four brands and up to 45 unique items in each brand.
+
+The goal of this report is to investigate the following:
+
+-   How do temporal trends and promotion-sales relationships vary across the four pasta brands?
+-   Can we improve forecasting of sales by accounting for the hierarchical structure in the data compared to simply modeling each brand (and item) independently?
+
+
 
 We compare likelihood-based models (EM, Newton-Raphson), Bayesian inference (MCMC), and machine learning benchmarks (Random Forests, Hidden Markov Models), using predictive accuracy as the main evaluation metric.
 
@@ -26,10 +34,12 @@ We compare likelihood-based models (EM, Newton-Raphson), Bayesian inference (MCM
 ## Goals
 
 # Data Description
+
 ```{r data-summary}
 data("data_set_tidy")
 glimpse(data_set_tidy)
 ```
+
 Each row corresponds to daily sales for a specific item, along with brand and promotion indicators.
 
 # Model Derivation
@@ -57,8 +67,8 @@ $$
 
 Where:
 
-* $\beta_{l}$: AR coefficients (constrained so sum $\leq$ 1)
-* $\gamma$: covariate effect vector
+-   $\beta_{l}$: AR coefficients (constrained so sum $\leq$ 1)
+-   $\gamma$: covariate effect vector
 
 ## Likelihood Function
 
@@ -77,8 +87,7 @@ $$
 \sum_{t=q+1}^T \left[
 y_{t} \log(m_{t}) - m_{t} - \log(y_{t}!)
 \right]
-$$
-Where, 
+$$ Where,
 
 $$
 m_t = \underbrace{\sum_{l=1}^{q} \beta_l y_{t-l}}_{\text{AR part}} +
@@ -86,47 +95,45 @@ m_t = \underbrace{\sum_{l=1}^{q} \beta_l y_{t-l}}_{\text{AR part}} +
 \underbrace{\exp(\mathbf{x}t^\top \boldsymbol{\gamma})}_{\text{covariate part}}
 $$
 
-
 ## Gradient (Score Function)
 
-Define the following: 
+Define the following:
 
-* $a_t = \sum_{l=q}^q \beta_ty_{t-l}$
-* $c_t = \exp(x_t^T\gamma)$
-* $w = 1 - \sum\beta_t$
-* $m_t = a_t + w \cdot c_t$
+-   $a_t = \sum_{l=q}^q \beta_ty_{t-l}$
+-   $c_t = \exp(x_t^T\gamma)$
+-   $w = 1 - \sum\beta_t$
+-   $m_t = a_t + w \cdot c_t$
 
-Then, the derivative of the log-likelihood with respect to $\gamma_j$ is:
-$$
+Then, the derivative of the log-likelihood with respect to $\gamma_j$ is: $$
 \frac{\partial{\log\mathcal{L}}}{\partial\gamma_j} = \sum_{t = q+ l}^T \left[ \frac{y_t}{m_t} - 1\right] \cdot w \cdot c_t \cdot x_{tj}
 $$
 
-And the derivative of the log-likelihood with respect to $\beta_k$ is: 
-$$
+And the derivative of the log-likelihood with respect to $\beta_k$ is: $$
 \frac{\partial{\log\mathcal{L}}}{\partial\beta_k} = \sum_{t = q+ l}^T \left[ \frac{y_t}{m_t} - 1\right] \left[ y_{t-k} - c_t\right]
 $$
 
 # Estimation Methods
 
 ## EM Algorithm
-* E-step: Applicable if we add new random intercepts (either item or brand level)
-* M-step: Maximize the expected log-likelihood with respect to model parameters $\gamma$, $\beta$, and $\tau$
 
-## Newton-Raphson
-* Use gradients and Hessians of the log-likelihood to iteratively update parameters
+-   E-step: Applicable if we add new random intercepts (either item or brand level)
+-   M-step: Maximize the expected log-likelihood with respect to model parameters $\gamma$, $\beta$, and $\tau$
+
 
 ## Bayesian Inference (MCMC)
-* Fit the independent Poisson Autoregression (PAR) model for each item with MCMC (currently implemented in STAN)
-* Place priors directly on model parameters
 
-* $\tau$: mixing weight for AR component, $\beta = \tau \tilde{\boldsymbol{\beta}}$
+-   Fit the independent Poisson Autoregression (PAR) model for each item with MCMC (currently implemented in STAN)
+
+-   Place priors directly on model parameters
+
+-   $\tau$: mixing weight for AR component, $\beta = \tau \tilde{\boldsymbol{\beta}}$
 
 Priors:
 
-* $\boldsymbol{\gamma} \sim \mathcal{N}(\boldsymbol{\mu}, \Sigma_\gamma)$
-* $\Sigma_\gamma \sim \text{Inv-Wishart}(\nu, \Psi)$ — (approximated as fixed in Stan)
-* $\tilde{\boldsymbol{\beta}} \sim \text{Dirichlet}(\alpha)$
-* $\tau \sim \text{Beta}(a, b)$
+-   $\boldsymbol{\gamma} \sim \mathcal{N}(\boldsymbol{\mu}, \Sigma_\gamma)$
+-   $\Sigma_\gamma \sim \text{Inv-Wishart}(\nu, \Psi)$ — (approximated as fixed in Stan)
+-   $\tilde{\boldsymbol{\beta}} \sim \text{Dirichlet}(\alpha)$
+-   $\tau \sim \text{Beta}(a, b)$
 
 # Model Evaluation and Predictive Performance
 
@@ -137,26 +144,18 @@ We evaluate models using holdout-based prediction: the final 10–20% of each it
 # knitr::kable(results)
 ```
 
-** Evaluation Metrics **
- - Root Mean Squared Error (RMSE)
- - Mean Absolute Error (MAE)
- - Log Predictive Density (for Bayesian models)
- - Posterior predictive interval coverage (for MCMC)
+\*\* Evaluation Metrics \*\* - Root Mean Squared Error (RMSE) - Mean Absolute Error (MAE) - Log Predictive Density (for Bayesian models) - Posterior predictive interval coverage (for MCMC)
 
 # Machine Learning Benchmarks
 
 ## Random Forest
+
 ```{r rf-model}
 # rf_fit <- fit_random_forest(...)
 ```
 
-## Hidden Markov Model
-```{r hmm-model}
-# hmm_fit <- fit_hmm(...)
-```
-
 # Summary and Discussion
- - Which methods give the most accurate predictions for sparse, autocorrelated data?
- - What is the trade-off between hierarchical shrinkage and item-specific flexibility?
- - Are machine learning models (e.g., random forests) better suited for forecasting than structured generative models?
- 
+
+-   Which methods give the most accurate predictions for sparse, autocorrelated data?
+-   What is the trade-off between hierarchical shrinkage and item-specific flexibility?
+-   Are machine learning models (e.g., random forests) better suited for forecasting than structured generative models?
