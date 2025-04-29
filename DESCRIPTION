@@ -1,9 +1,15 @@
 Package: pastasales
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.1.9002
+Title: Poisson Auto-Regression Model for Sales Data
+Version: 0.0.1.9003
 Authors@R:
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+c(
+    person("Justin", "Landis", , "jtlandis314@gmail.com", role = c("aut", "cre")),
+    person("Alec", "Reinhardt", , "alec.e.reinhardt@gmail.com", role = c("aut", "cre")),
+    person("Abby", "Foes", , "agfoes@gmail.com", role = c("aut", "cre")),
+    person("Zheng", "Lan", , "zhenglan0822@gmail.com", role = c("aut", "cre")),
+    person("Yu", "Liu", , "haibara.yl02@gmail.com", role = c("aut", "cre"))
+)
+Description: This package includes pastasales and provides a Poisson auto-regression model for sales data. It offers functions for fitting with BFGS or Bayesian MCMC approach.
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
