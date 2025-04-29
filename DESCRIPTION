@@ -1,9 +1,13 @@
 Package: pastasales
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
-Authors@R:
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Title: Poisson Auto-Regression Model for Sales Data
+Version: 0.0.1.9004
+Authors@R: c(
+    person("Justin", "Landis", , "jtlandis314@gmail.com", role = c("aut", "cre")),
+    person("Alec", "Reinhardt", , "alec.e.reinhardt@gmail.com", role = c("aut")),
+    person("Abby", "Foes", , "agfoes@gmail.com", role = c("aut")),
+    person("Zheng", "Lan", , "zhenglan0822@gmail.com", role = c("aut")),
+    person("Yu", "Liu", , "haibara.yl02@gmail.com", role = c("aut")))
+Description: This package includes pastasales and provides a Poisson auto-regression model for sales data. It offers functions for fitting with BFGS or Bayesian MCMC approach.
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -13,6 +17,7 @@ Depends:
 LazyData: true
 Imports:
     dplyr,
+    graphics,
     magrittr,
     methods,
     optimx,
@@ -20,25 +25,26 @@ Imports:
     Rcpp,
     RcppParallel,
     rlang,
-    rstantools,
-    rstan,
     stats,
     tibble,
-    tidyr
-Remotes:
-    stan-dev/cmdstanr
+    tidyr,
+    utils
 Suggests:
+    caret,
+    cowplot,
     ggplot2,
     knitr,
+    lubridate,
     mvtnorm,
-    rmarkdown
+    rmarkdown,
+    scales,
+    testthat (>= 3.0.0)
 Biarch: true
 LinkingTo:
     BH (>= 1.66.0),
     Rcpp (>= 0.12.0),
     RcppEigen (>= 0.3.3.3.0),
-    RcppParallel (>= 5.0.1),
-    rstan (>= 2.18.1),
-    StanHeaders (>= 2.18.0)
+    RcppParallel (>= 5.0.1)
 SystemRequirements: GNU make
 VignetteBuilder: knitr
+Config/testthat/edition: 3

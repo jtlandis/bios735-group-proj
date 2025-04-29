@@ -6,13 +6,18 @@
 \alias{pastasales-package}
 \title{BIOS735 Group Project (group 2)}
 \description{
-This package contains functions for analyzing pasta sales data. Included are a few rstan models for comparison.
-}
-\references{
-Stan Development Team (NA). RStan: the R interface to Stan. R package version 2.32.3. https://mc-stan.org
+This package contains functions for analyzing pasta sales data.
 }
 \author{
-\strong{Maintainer}: First Last \email{first.last@example.com}
+\strong{Maintainer}: Justin Landis \email{jtlandis314@gmail.com}
+
+Authors:
+\itemize{
+  \item Alec Reinhardt \email{alec.e.reinhardt@gmail.com}
+  \item Abby Foes \email{agfoes@gmail.com}
+  \item Zheng Lan \email{zhenglan0822@gmail.com}
+  \item Yu Liu \email{haibara.yl02@gmail.com}
+}
 
 }
 \keyword{internal}

@@ -4,20 +4,16 @@
 \alias{par_gradient}
 \title{Gradient of PAR Log-Likelihood}
 \usage{
-par_gradient(y, x, beta, gamma, mu = 0, q = length(beta))
+par_gradient(y, x, beta, gamma)
 }
 \arguments{
 \item{y}{Vector of observed counts (length T)}
 
-\item{x}{Matrix of covariates (T × p)}
+\item{x}{Matrix of covariates (T × (q + p))}
 
 \item{beta}{Vector of length q}
 
 \item{gamma}{Vector of length p}
-
-\item{mu}{Intercept (scalar)}
-
-\item{q}{Number of lags}
 }
 \value{
 Named numeric vector of length q + p (gradients of beta and gamma)

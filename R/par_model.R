@@ -6,31 +6,19 @@
 #' @param x Matrix of covariates of dimension T × p
 #' @param beta Vector of length q (autoregressive weights)
 #' @param gamma Vector of length p (covariate effects)
-#' @param mu Intercept (optional, scalar)
-#' @param q Number of lags
+#'
+#' @examples
+#' # Example usage
+#' model_spec <- par_model_mat(
+#'   data = data_set_raw,
+#'   formula = QTY_B1_1 ~ PROMO_B1_1
+#' )
+#' par_loglik(model_spec$Y, model_spec$X, model_spec$beta, model_spec$gamma)
 #'
 #' @return Log-likelihood value (numeric scalar)
 #' @export
-par_loglik <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
-  T <- length(y)
-  stopifnot(nrow(x) == T)
-  if (length(gamma) == 0) gamma <- 0
-  ll <- 0
-  for (t in (q + 1):T) {
-    y_lags <- y[(t - 1):(t - q)]
-    x_t <- x[t, ]
-
-    auto_part <- sum(beta * y_lags)
-    linear_part <- mu + sum(x_t * gamma)
-    mix_weight <- 1 - sum(beta)
-
-    m_t <- auto_part + mix_weight * exp(linear_part)
-    if (m_t <= 0) m_t <- 1e-10 # safeguard
-
-    ll <- ll + y[t] * log(m_t) - m_t - lgamma(y[t] + 1)
-  }
-
-  return(ll)
+par_loglik <- function(y, x, beta, gamma) {
+  loglik_cpp(Y = y, X = x, beta = beta, gamma = gamma)
 }
 
 #' Fit PAR Model Using Optim
@@ -38,27 +26,30 @@ par_loglik <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
 #' Fit a non-hierarchical PAR model using maximum likelihood and optim().
 #'
 #' @param y Vector of counts
-#' @param x Matrix of covariates (T × p)
+#' @param x Matrix of covariates (T × (q + p))
 #' @param q Number of lags
+#'
+#' @seealso `fit_par_bfgs()`
 #'
 #' @return A list with estimated parameters and log-likelihood
 #' @export
 fit_par_optim <- function(y, x, q = 1) {
   T <- length(y)
-  p <- ncol(x)
-
+  p <- ncol(x) - q
+  beta_seq <- seq_len(q)
+  gamma_seq <- seq_len(p) + q
   init <- c(rep(0.05, q), rep(0.01, p)) # beta + gamma
 
   nll <- function(par) {
-    beta <- par[1:q]
-    gamma <- par[(q + 1):(q + p)]
-    -par_loglik(y, x, beta, gamma, mu = 0, q = q)
+    beta <- par[beta_seq]
+    gamma <- par[gamma_seq]
+    -par_loglik(y, x, beta, gamma)
   }
 
   grad <- function(par) {
-    beta <- par[1:q]
-    gamma <- par[(q + 1):(q + p)]
-    -par_gradient(y, x, beta, gamma, mu = 0, q = q)
+    beta <- par[beta_seq]
+    gamma <- par[gamma_seq]
+    -par_gradient(y, x, beta, gamma)
   }
 
   fit <- optim(
@@ -70,8 +61,8 @@ fit_par_optim <- function(y, x, q = 1) {
   )
 
   list(
-    beta = fit$par[1:q],
-    gamma = fit$par[(q + 1):(q + p)],
+    beta = fit$par[beta_seq],
+    gamma = fit$par[gamma_seq],
     loglik = -fit$value,
     converged = fit$convergence == 0,
     fit = fit
@@ -83,44 +74,14 @@ fit_par_optim <- function(y, x, q = 1) {
 #' Computes the gradient of the log-likelihood for a Poisson autoregressive model.
 #'
 #' @param y Vector of observed counts (length T)
-#' @param x Matrix of covariates (T × p)
+#' @param x Matrix of covariates (T × (q + p))
 #' @param beta Vector of length q
 #' @param gamma Vector of length p
-#' @param mu Intercept (scalar)
-#' @param q Number of lags
 #'
 #' @return Named numeric vector of length q + p (gradients of beta and gamma)
 #' @export
-par_gradient <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
-  T <- length(y)
-  p <- length(gamma)
-
-  grad_beta <- rep(0, q)
-  grad_gamma <- rep(0, p)
-
-  for (t in (q + 1):T) {
-    y_lags <- y[(t - 1):(t - q)]
-    x_t <- x[t, ]
-    linear_part <- mu + sum(x_t * gamma)
-
-    a_t <- sum(beta * y_lags)
-    b_t <- (1 - sum(beta)) * exp(linear_part)
-    m_t <- a_t + b_t
-
-    prefactor <- (y[t] / m_t) - 1
-
-    for (l in 1:q) {
-      grad_beta[l] <- grad_beta[l] + prefactor * (y[t - l] - exp(linear_part))
-    }
-
-    for (j in 1:p) {
-      grad_gamma[j] <- grad_gamma[j] +
-        prefactor * (1 - sum(beta)) * x_t[j] * exp(linear_part)
-    }
-  }
-
-  grad <- c(beta = grad_beta, gamma = grad_gamma)
-  grad[!is.na(grad)]
+par_gradient <- function(y, x, beta, gamma) {
+  loglik_grad_cpp(Y = y, X = x, beta = beta, gamma = gamma)
 }
 
 #' Fit PAR Model Using Gradient Descent
@@ -139,17 +100,39 @@ par_gradient <- function(y, x, beta, gamma, mu = 0, q = length(beta)) {
 #'
 #' @return A list with estimated parameters, log-likelihood, and convergence measure (epsilon)
 #' @export
-fit_par_grad_descent <- function(y, x, q = 1, initial_vals = NULL, lr = 1e-4, maxIter = 5000, tol = 1e-8, return_allIters = FALSE, verbose = FALSE) {
+fit_par_grad_descent <- function(
+  y,
+  x,
+  q = 1,
+  initial_vals = NULL,
+  lr = 1e-4,
+  maxIter = 5000,
+  tol = 1e-8,
+  return_allIters = FALSE,
+  verbose = FALSE
+) {
   p <- ncol(x)
   beta0 <- rep(0, q)
   gamma0 <- rep(0, p)
-  if (!is.null(initial_vals) & all(c("beta", "gamma") %in% names(initial_vals))) {
+  if (
+    !is.null(initial_vals) & all(c("beta", "gamma") %in% names(initial_vals))
+  ) {
     beta0 <- initial_vals$beta
     gamma0 <- initial_vals$gamma
   }
-  fit <- proj_grad_descent_cpp(y, x, beta0, gamma0, lr, maxIter, tol, return_allIters, verbose)
+  fit <- proj_grad_descent_cpp(
+    y,
+    x,
+    beta0,
+    gamma0,
+    lr,
+    maxIter,
+    tol,
+    return_allIters,
+    verbose
+  )
   ll <- par_loglik(y, x, fit$beta, fit$gamma)
-  
+
   list(
     beta = fit$beta,
     gamma = fit$gamma,
@@ -174,57 +157,43 @@ fit_par_grad_descent <- function(y, x, q = 1, initial_vals = NULL, lr = 1e-4, ma
 #'
 #' @return A list with estimated parameters, log-likelihood, and (optionally) MCMC samples
 #' @export
-fit_par_mcmc <- function(y, x, q = 1, mcmc_iter = 5000, burn_in = 0.5, hyperparams = NULL, proposal_sd = 0.05, return_mcmc = TRUE, verbose = FALSE) {
-  mcmc <- run_mcmc_par_cpp(y, x, q, n_iter = mcmc_iter, hyperparams = hyperparams, proposal_sd = proposal_sd, verbose = verbose)
-  
-  ss <- round(burn_in * mcmc_iter):mcmc_iter
-  beta_est <- colMeans(mcmc$beta[ss,,drop=F])
-  gamma_est <- colMeans(mcmc$gamma[ss,,drop=F])
-  ll <- par_loglik(y, x, beta_est, gamma_est)
-  
-  if (return_mcmc == T) res <- list(beta = beta_est, gamma = gamma_est, loglik = ll, mcmc_samps = mcmc)
-  if (return_mcmc == F) res <- list(beta = beta_est, gamma = gamma_est, loglik = ll)
-  
-  res
-}
-
-par_bfgs <- function(
+fit_par_mcmc <- function(
   y,
   x,
-  beta = numeric(0),
-  gamma,
-  max_iter = 1000,
-  trace_mod = 0
+  q = 1,
+  mcmc_iter = 5000,
+  burn_in = 0.5,
+  hyperparams = NULL,
+  proposal_sd = 0.05,
+  return_mcmc = TRUE,
+  verbose = FALSE
 ) {
-  q <- length(beta)
-  p <- length(gamma)
-
-  beta_slice <- seq_len(q)
-  gamma_slice <- seq_len(p) + q
-
-  ll <- function(par, y, x) {
-    beta <- par[beta_slice]
-    gamma <- par[gamma_slice]
-    par_loglik(y, x, beta, gamma, mu = 0, q = q)
-  }
-
-  grad <- function(par, y, x) {
-    beta <- par[beta_slice]
-    gamma <- par[gamma_slice]
-    par_gradient(y, x, beta, gamma, mu = 0, q = q)
-  }
-
-  general_bfgs(
-    par = c(beta, gamma),
-    f = ll,
-    g = grad,
-    y = y,
-    x = x,
-    H = par_hessian(y, x, beta, gamma) |> solve(),
-    max_iter = max_iter,
-    step_size = 0.1,
-    trace_mod = trace_mod
+  mcmc <- run_mcmc_par_cpp(
+    y,
+    x,
+    q,
+    n_iter = mcmc_iter,
+    hyperparams = hyperparams,
+    proposal_sd = proposal_sd,
+    verbose = verbose
   )
+
+  ss <- round(burn_in * mcmc_iter):mcmc_iter
+  beta_est <- colMeans(mcmc$beta[ss, , drop = F])
+  gamma_est <- colMeans(mcmc$gamma[ss, , drop = F])
+  ll <- par_loglik(y, x, beta_est, gamma_est)
+
+  if (return_mcmc == T)
+    res <- list(
+      beta = beta_est,
+      gamma = gamma_est,
+      loglik = ll,
+      mcmc_samps = mcmc
+    )
+  if (return_mcmc == F)
+    res <- list(beta = beta_est, gamma = gamma_est, loglik = ll)
+
+  res
 }
 
 # utility function to shift some data
@@ -323,4 +292,228 @@ par_hessian <- function(y, x, beta, gamma) {
   }
 
   H
+}
+
+assert_no_dup_time <- function(
+  data,
+  time,
+  groups = NULL,
+  .call = rlang::caller_env()
+) {
+  time <- rlang::enquo(time)
+  groups <- rlang::enquo(groups)
+  any_dup <- data |>
+    group_by(across(!!groups)) |>
+    summarise(.dup = anyDuplicated(!!time), .groups = "drop")
+  if (any(any_dup$.dup)) {
+    if (ncol(any_dup) == 1) {
+      rlang::abort(
+        c(
+          sprintf(
+            "Duplicate times found in column `%s`",
+            rlang::as_label(time)
+          ),
+          "!" = "only one time point is permitted per group",
+          "i" = "consider subsetting your data, or use `groups` argument"
+        ),
+        call = .call
+      )
+    } else {
+      w <- filter(any_dup, .dup > 0) |> select(-.dup)
+      rlang::abort(
+        c(
+          "Duplicate times found in groups:",
+          {
+            w_names <- names(w)
+            seq_row <- seq_len(nrow(w))
+            l <- vapply(
+              seq_row,
+              function(i) {
+                paste0(w_names, ": ", unlist(w[i, ]), collapse = ", ")
+              },
+              character(1)
+            )
+            n <- length(l)
+            names(l) <- rep("*", n)
+            if (n < 4) {
+              l
+            } else {
+              c(l[1:3], "i" = paste0("... and ", n - 3, " more"))
+            }
+          },
+          "!" = "only one time point is permitted per group",
+          "i" = "consider subsetting your data, or use `groups` argument"
+        ),
+        call = .call
+      )
+    }
+  }
+  invisible(NULL)
+}
+
+#' Design matrix for analysis
+#' @param data Data frame containing the data.
+#' @param formula Formula specifying the model.
+#' @param time Time variable.
+#' @param nlag Number of lags.
+#' @param groups Grouping variable.
+#' @examples
+#' #single object
+#' model_spec <- par_model_mat(
+#'  data = data_set_raw,
+#'  formula = QTY_B1_1 ~ PROMO_B1_1
+#' )
+#' model_spec
+#'
+#' #multiple objects
+#' model_spec <- par_model_mat(
+#'  data = data_set_tidy,
+#'  formula = QTY ~ PROMO,
+#'  ### *** unless this is provided this model ***
+#'  ### *** will assume that data is already ***
+#'  ### *** ordered correctly ***
+#'  time = DATE,
+#'  ### *** if multiple timepoints are detected ***
+#'  ### *** per group, an error is thrown ***
+#'  groups = c(brand, item)
+#' )
+#' model_spec
+#'
+#' # more complicated model
+#' model_spec <- par_model_mat(
+#'  data_set_tidy,
+#'  #include brand in model as well as its interaction
+#'  # with promotion
+#'  formula = QTY ~ PROMO*brand,
+#'  time = DATE,
+#'  nlag = 4,
+#'  groups = c(brand, item)
+#' )
+#' model_spec
+#'
+#'
+#' @return a 'par_model_spec' object
+#' @export
+par_model_mat <- function(
+  data,
+  formula,
+  time = NULL,
+  nlag = 1,
+  groups = NULL
+) {
+  time <- rlang::enexpr(time)
+  groups <- rlang::enexpr(groups)
+  q <- nlag
+  stopifnot(
+    rlang::is_formula(formula),
+    "`nlag` must be >= 0" = q >= 0
+  )
+  assert_no_dup_time(data, !!time, !!groups)
+  model_call <- match.call()
+  y_sym <- rlang::f_lhs(formula)
+  covar <- rlang::f_rhs(formula)
+  seq_ <- seq_len(q)
+  lags <- setNames(seq_, sprintf("lag%i", seq_)) |>
+    lapply(function(l) expr(lag(!!y_sym, !!l)))
+  lag_names <- rlang::syms(names(lags))
+  # check if any duplicate times
+  data <- arrange(data, !!time) |>
+    group_by(across(!!groups))
+  if (q > 0) {
+    data <- data |>
+      mutate(!!!lags) |>
+      slice(-seq_len(.env$q))
+  }
+
+  lag_formula <- switch(
+    match(length(lag_names), c(0, 1, 2), nomatch = 4L),
+    NULL,
+    lag_names[[1]],
+    call("+", lag_names[[1]], lag_names[[2]]),
+    {
+      out <- call("+", lag_names[[1]], lag_names[[2]])
+      for (i in 3:length(lag_names)) {
+        out <- call("+", out, lag_names[[i]])
+      }
+      out
+    }
+  )
+
+  if (!is.null(lag_formula)) {
+    covar <- expr(!!lag_formula + !!covar)
+  }
+
+  # vanilla formula - no environment attached.
+  formula2 <- expr(!!y_sym ~ !!covar)
+  #data <- select(data, !!time, across(groups), !!!collect_symbols(formula2))
+  formula <- as.formula(object = formula2, env = parent.frame())
+  X <- model.matrix(object = formula, data = data)
+  gamma <- rep(0, ncol(X) - q)
+  if (q > 0) {
+    X <- X[, c(names(lags), colnames(X)[-which(colnames(X) %in% names(lags))])]
+    names(gamma) <- colnames(X)[-seq_len(q)]
+  } else {
+    names(gamma) <- colnames(X)
+  }
+  #data <- filter(data, dplyr::if_any(dplyr::everything(), Negate(is.na)))
+  Y <- pull(data, !!y_sym)
+  attr(X, ".non_empty") <- apply(X, 2, function(x) which(x != 0) - 1L)
+  structure(
+    list(
+      Y = Y,
+      X = X,
+      beta = setNames(rep(0, q), names(lags)),
+      gamma = gamma,
+      .data = data,
+      formula = formula2,
+      model_call = model_call
+    ),
+    class = "par_model_spec"
+  )
+}
+
+#' @export
+print.par_model_spec <- function(x, ..., show_data = FALSE) {
+  cat("PAR model specification:\n")
+  cat(" -", format(x$formula), "\n")
+  cat(" - design dim:", nrow(x$X), "x", ncol(x$X), "\n")
+  cat(" - across", nrow(dplyr::group_data(x$.data)), "group(s)\n")
+  cat(
+    " - using",
+    length(x$beta),
+    "lag point(s) and",
+    length(x$gamma),
+    "covariate(s)\n"
+  )
+  if (show_data) {
+    print(x$.data)
+  }
+}
+
+#' @export
+`[.par_model_spec` <- function(x, i) {
+  x$Y <- x$Y[i]
+  x$X <- x$X[i, ]
+  groups <- dplyr::groups(x$.data)
+  x$.data <- x$.data |>
+    dplyr::ungroup() |>
+    dplyr::slice(i) |>
+    dplyr::group_by(!!!groups)
+  x
+}
+
+#' PAR model deviation
+#' This is the deviance function used for poisson models
+#' @param Y Vector of counts (length T)
+#' @param X Matrix of covariates of dimension T × p
+#' @param beta Vector of length q (autoregressive weights)
+#' @param gamma Vector of length p (covariate effects)
+#' @export
+par_deviance <- function(Y, X, beta, gamma) {
+  d <- numeric(length(Y))
+  non_zero <- Y > 0
+  mt <- get_mt_cpp(Y, X, beta, gamma)
+  d[non_zero] <- Y[non_zero] * log(Y[non_zero] / mt[non_zero])
+  d <- d - Y + mt
+  sum(2 * d)
 }

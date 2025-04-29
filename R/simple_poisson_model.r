@@ -140,7 +140,6 @@ simple_pois_bfgs <- function(
 #' @param max_iter maximum number of iterations
 #' @param trace_mod trace modulus. 0 is no tracing, 1 is
 #'  tracing each step, 2 is tracing every 2 steps, etc.
-#' @param step_size step size in gradient descent
 #' @return optimized parameters
 general_bfgs <- function(
   params,
@@ -149,20 +148,27 @@ general_bfgs <- function(
   ...,
   H = diag(length(params)),
   max_iter = 1000,
-  trace_mod = 1,
-  step_size = 0.1
+  trace_mod = 1
 ) {
   force(f)
   force(g)
   force(H)
-  force(step_size)
   ident <- diag(length(params))
   p <- function(params, ...) {
     -H %*% g(params, ...)
   }
 
-  step_by <- function(params, by, ...) {
-    p(params, ...) * by
+  alphas <- 10^(-8:-1)
+  alphas <- c(-alphas, alphas)
+  step_by <- function(params, pdir, ...) {
+    #pdir <- p(params, ...)
+    force(params)
+    force(pdir)
+    res <- numeric(length(alphas))
+    for (i in seq_along(res)) {
+      res[i] <- f(params + (alphas[i] * pdir), ...)
+    }
+    alphas[which.max(res)]
   }
 
   update <- function(s, y) {
@@ -182,7 +188,9 @@ general_bfgs <- function(
   while (count < max_iter) {
     count <- count + 1L
     should_trace <- trace_mod != 0 && count %% trace_mod == 0
-    s <- step_by(params = params, by = step_size, ...)
+    pdir <- p(params, ...)
+    step_size <- step_by(params = params, pdir = pdir, ...)
+    s <- step_size * pdir
     params_ <- params + s
     grade_ <- g(params_, ...)
     H_ <- update(s, grade_ - grade)
@@ -205,28 +213,6 @@ general_bfgs <- function(
     if (abs(LL_ - LL) < 1e-4) {
       if (should_trace) cat("INFO: Convergence reached\n")
       return(params_)
-    }
-
-    # if we every increase in LL try again
-    # with a smaller step step_size
-    if (LL_ < LL) {
-      if (count - count_cache > 1) {
-        if (should_trace) cat("INFO: Decreasing step size\n")
-        step_size <- step_size / 2
-        #count <- count - 1L
-        count_cache <- count
-        next
-      }
-    } else {
-      if (count - count_cache > 2) {
-        .diff <- diff(diffs[(count - 2):count])
-        slp <- .diff / mean(.diff) - 1
-        if (all(slp > -0.2) && all(slp < 0.2)) {
-          if (should_trace) cat("INFO: Increasing step size\n")
-          step_size <- step_size * 1.8
-          count_cache <- count
-        }
-      }
     }
 
     LL <- LL_

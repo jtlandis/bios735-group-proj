@@ -18,8 +18,17 @@ knitr::opts_chunk$set(
 #temporary name of package
 library(pastasales)
 library(ggplot2)
+library(dplyr)
+library(tidyr)
 ```
 
+```{r}
+
+data_set_tidy
+
+```
+
+This data contains time series data for pasta sales for 4 brands. Data made available is the date, brand identifier, item identifier, promotion status, and quantity sold.
 
 ```{r}
 ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
@@ -28,18 +37,312 @@ ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
   theme_classic()
 ```
 
+Some brands have more items than others, and perform better on average. Regardless of the number of items, each subject (brand and item pair) has a total of 1798 days of data.
+
+```{r}
+group_by(data_set_tidy, brand) |>
+  summarise(n_items = length(unique(item)),
+            data_points = n(),
+            all_1798 = all(vapply(split(seq_len(n()), item),
+                                  length, 1L) == 1798),
+            total_sales = sum(QTY),
+            avg_sales = mean(QTY),
+            days_promoted = sum(PROMO))
+```
+
+We can see from the above table that brand 2 has spent many days promoting their items.
+
 ```{r}
 ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
-  geom_path(aes(group = item, color = PROMO)) +
+  geom_path(aes(group = item, color = as.factor(PROMO))) +
+  scale_color_manual(values = c("black", "red")) +
   facet_grid(rows = vars(brand), scales = "free_y") +
   theme_classic()
 ```
 
+Summarising the data further we can see more specific information about each brand and item pair. For instance, most brands spent under 25% of their days promoting their items, with the exception of brand 2 which spent upwards of 90% of their days promoting their items. This over promotion will make it difficult to estimate any baseline sale rate for these items.
 
 ```{r}
-library(dplyr)
+brand_item_summary <- data_set_tidy |>
+  mutate(item = as.integer(item)) |>
+  group_by(brand, item) |>
+  summarise(
+    days_promoted = sum(PROMO),
+    total_sales = sum(QTY),
+    avg_sales = mean(QTY),
+    avg_sales_w_promo = mean(QTY[PROMO == 1]),
+    avg_sales_wo_promo = mean(QTY[PROMO == 0]),
+    investment = days_promoted/n(),
+    ratio = avg_sales_w_promo/avg_sales_wo_promo
+  ) %>% {
+    .gg <- . |> mutate(
+      brand_item = paste(brand, item, sep = "_")
+    ) |> ungroup() |> arrange(total_sales) |> mutate(
+      brand_item = factor(brand_item, levels = unique(brand_item))
+    ) |> pivot_longer(cols = c(total_sales, investment, ratio)) |>
+      ggplot(aes(x = brand_item, y = value)) +
+      geom_col(fill = "steelblue") +
+      facet_grid(cols = vars(brand), rows = vars(name), scales = "free",
+        space = "free_x") + scale_x_discrete() +
+      theme_bw() +
+      labs(x = "Brand Item", y = "Metric") +
+      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+    #ggsave("../brand_item_summary.png", .gg)
+    plot(.gg)
+    .
 
-group_by(data_set_tidy, brand) |>
-  summarise(n_items = length(unique(item)), data_points = n())
+  } |>
+arrange(desc(total_sales))
+
+
+brand_item_summary |>
+  ## show the top 3 and bottom 3 brand items
+  slice(c(1:3, (n() - 2):n())) |>
+  knitr::kable()
+
+
+```
+
+```{r}
+
+ggplot(brand_item_summary, aes(x = brand, y = investment)) +
+geom_boxplot() +
+scale_y_continuous(labels = scales::percent_format()) +
+labs(x = "Brand Item", y = "Investment") +
+theme_minimal() +
+labs(title = "Investment by Brand Item", caption = "Each data point represents a brand item. Invesetment is defined as the percent of days promoted over the course of a time series.")
+
+```
+
+The `pastasales` package attempts to model these time series data using a Auto-Regressive (AR) model. Below is the main model specification.
+
+$$
+\begin{align*}
+    & y_t | m_t \sim \text{Poisson}(m_t) \\
+    & m_t =\sum_{l=1}^q \beta_{l} y_{t-l} + \left(1-\sum_{l=1}^q \beta_l \right) \exp(\mathbf{x}_t^T \boldsymbol{\gamma})
+\end{align*}
+$$
+
+where for our priors we assume
+
+$$
+\begin{align*}
+    & \boldsymbol{\gamma} \sim N(\boldsymbol{\mu}, \Sigma_{\gamma}) \\
+    & \Sigma_{\gamma} \sim \text{Inv-Wishart}(\nu, \Psi)\\
+    & \tilde{\boldsymbol{\beta}}_i | \tau \sim \text{Dirichlet}(\boldsymbol{\alpha}), \ \beta_{i,l}=\tau \tilde{\beta}_{i,l} \\
+    & \tau \sim \text{Beta}(a,b)
+\end{align*}
+$$
+
+<!-- Should we mention the initial auto-regressive model? -->
+
+## Fitting a single subject
+
+The `data_set_raw` data set is structured conviently for single subject analysis.
+
+```{r}
+
+model_spec <- par_model_mat(
+  data = data_set_raw,
+  formula = QTY_B1_1 ~ PROMO_B1_1
+)
+
+model_spec
+
+mcmc_res <- fit_par_mcmc(
+  model_spec$Y,
+  model_spec$X,
+  length(model_spec$beta)
+)
+
+```
+
+With dplyr, we could model multiple items independently.
+
+```{r}
+
+all_items <- data_set_tidy |>
+  mutate(item = as.integer(item)) |>
+  group_by(brand, item) |>
+  summarise(
+    spec = list(par_model_mat(
+      data = pick(DATE, QTY, PROMO),
+      formula = QTY ~ PROMO,
+      nlag = 3
+    )),
+    fit = list(fit_par_bfgs(spec[[1]])),
+    .groups = "keep"
+  ) |>
+  unnest_wider(fit) |>
+  mutate(
+    # caching results before
+    # unnesting.
+    spec = {
+      spec[[1]]$beta <- beta[[1]]
+      spec[[1]]$gamma <- gamma[[1]]
+      spec}
+  ) |>
+  unnest_wider(beta) |>
+  unnest_wider(gamma)
+
+all_items <- all_items |>
+  mutate(
+    spec = {
+      this <- spec[[1]]
+      this$.data <- this$.data |>
+      mutate(
+        mt = get_par_mt(this)
+      )
+      spec[[1]] <- this
+      spec
+    }
+  )
+
+plot_spec <- function(spec) {
+
+  ggplot(spec$.data, aes(x = DATE, y = QTY)) +
+    geom_line(color = "grey") +
+    geom_line(aes(y = mt), color = "red", linetype = "dotted") +
+    theme_minimal()
+}
+
+# brand 1
+plot_spec(all_items$spec[[1]])
+# brand 2
+plot_spec(all_items$spec[[50]])
+# brand 3
+plot_spec(all_items$spec[[85]])
+# brand 4
+plot_spec(all_items$spec[[110]])
+
+```
+
+```r
+## large model ~ 45 min to run
+model_large <- par_model_mat(
+  data = data_set_tidy,
+  formula = QTY ~ PROMO*brand*item,
+  time = DATE,
+  groups = c(brand, item),
+  nlag = 4
+)
+model_large
+res <- fit_par_bfgs(model_large)
+model_large$beta <- res$beta
+model_large$gamma <- res$gamma
+```
+
+```{r}
+#| echo: false
+model_large <- eval(mod_promo_brand_item$mod_call)
+model_large$beta <- mod_promo_brand_item$mod_fit$beta
+model_large$gamma <- mod_promo_brand_item$mod_fit$gamma
+```
+
+```{r}
+
+get_deviance <- function(spec) {
+  pastasales::assert_valid_par_model_spec(spec)
+  par_deviance(spec$Y, spec$X, spec$beta, spec$gamma)
+}
+
+get_loglik <- function(spec) {
+  pastasales::assert_valid_par_model_spec(spec)
+  par_loglik(spec$Y, spec$X, spec$beta, spec$gamma)
+}
+
+calc_deviance_slice <- function(spec, slice) {
+  get_deviance(spec[slice])
+}
+
+model_large_dev <- model_large$.data |>
+  mutate(item = as.integer(item)) |>
+  group_by(brand, item) |>
+  summarise(
+    deviance = calc_deviance_slice(model_large, cur_group_rows()),
+    loglik = get_loglik(model_large[cur_group_rows()])
+  )
+
+all_items_dev <- all_items |>
+  rowwise() |>
+  transmute(
+    brand = brand,
+    item = item,
+    deviance = get_deviance(spec),
+    loglik = get_loglik(spec)
+  )
+
+
+all_items_dev |>
+  left_join(model_large_dev, by = c("brand", "item"),
+    suffix = c("_single", "_hierarchical")
+  ) |>
+  pivot_longer(
+    cols = -c(brand, item),
+    names_to = c("metric","model"),
+    names_pattern = "(.*)_(.*)",
+    values_to = "value"
+  ) |>
+  filter(metric == "deviance") |>
+  ggplot(aes(x = model, y = value)) +
+    geom_point() +
+    geom_line(aes(group = interaction(brand, item))) +
+    facet_wrap(~brand) +
+    theme_minimal() +
+    labs(title = "Deviance Comparison",
+         x = "Model",
+         y = "Deviance",
+         caption = "Hierarchical model is not always better than the single model")
+```
+
+It is not necessarily true that the hierarchical model is always better than the single model. The deviance between the two are very similar.
+
+A  big issue with our data is that promotion is not a good predictor of sales. Some days promotion has no effect on sales while others days are extremely effective.
+
+We can attempt to model some latent variable of promotion effectiveness as a bornoulli distribution with unknown $\pi_i$.
+
+```r
+## Long running process
+## to see the full example do:
+## file.edit(system.file("examples/em-results.r", package = "pastasales"))
+model_em_all <- data_set_tidy |>
+  mutate(
+    brand = as.factor(brand),
+    item = as.integer(item)
+  ) |>
+  group_by(brand, item) |>
+  summarise(
+    model = par_model_mat(
+      pick(DATE, QTY, PROMO),
+      QTY ~ PROMO,
+      nlag = 5
+    ) |>
+      list(),
+    em = {
+      print(cur_group())
+      par_em_effective(
+        model[[1]],
+        col = PROMO,
+        subset = PROMO == 1,
+        tol = 1e-6,
+        show_plots = TRUE
+      ) |>
+        list()
+    }
+  ) |>
+  rowwise() |>
+  mutate(
+    pi = em$pi,
+    ll = em$ll,
+    ll_old = em$ll_original
+  )
+
+```
+
+```{r, em}
+#| echo: FALSE
+#| fig-cap: "EM results of fitting each brand item using BFGS. Panel A: A time series of one representative example item from each brand. Grey lines indicate original observed data. Blue dotted lines indicate initial BFGS fit mean estimates. Red dotted lines indicate final mean fits after latent variable estimation. Rug marks indicate days in which a promotion occurred, while yellow marks indicate days that were effective. Panel B: deviance of the initial model estimates compared to the EM model estimates. Each brand item is colored by their estimated pi from EM."
+
+knitr::include_graphics(system.file("examples/em_results.png", package = "pastasales"))
 
 ```

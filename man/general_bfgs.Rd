@@ -11,8 +11,7 @@ general_bfgs(
   ...,
   H = diag(length(params)),
   max_iter = 1000,
-  trace_mod = 1,
-  step_size = 0.1
+  trace_mod = 1
 )
 }
 \arguments{
@@ -32,8 +31,6 @@ true inv-Hessian matrix.}
 
 \item{trace_mod}{trace modulus. 0 is no tracing, 1 is
 tracing each step, 2 is tracing every 2 steps, etc.}
-
-\item{step_size}{step size in gradient descent}
 }
 \value{
 optimized parameters
