@@ -9,6 +9,11 @@
 remotes::install_github("jtlandis/bios735-group-proj")
 ```
 
+## Final Report
+The BIOS735 final report can be found in `report/` as Report.pdf with 
+related Overleaf documentation in `report/overleaf/` folder. 
+
+
 ## pastasales
 
 ``` r
