@@ -21,3 +21,10 @@
 #' sales data with promotion, brand, and item effects
 #' @return A par_model_spec
 "walk_promo_brand_item"
+
+#' @title EM silencing of PROMO variable
+#' @description
+#' results of estimating Promotion effectiveness
+#' latent variable per item brand combination
+#' @return A tibble object
+"model_em_all"

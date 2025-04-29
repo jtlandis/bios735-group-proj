@@ -75,12 +75,13 @@ assert_valid_par_model_spec <- function(spec, .call = parent.frame()) {
 get_data_pseudo_complete <- function(spec) {
   y_sym <- rlang::f_lhs(spec$model_call$formula)
   time <- spec$model_call$time
+  time_sym <- if (!is.null(time)) time else quote(time)
   if (any(grepl("^lag[0-9]+$", colnames(spec$.data)))) {
     data <- spec$.data |>
       slice(1L) |>
       dplyr::reframe(
         "{y_sym}" := rev(dplyr::c_across(dplyr::matches("^lag[0-9]+$"))),
-        "{time}" := if (!is.null(time))
+        "{time_sym}" := if (!is.null(time))
           (!!time) - rev(seq_len(length(!!y_sym))) else NULL,
         ...pseudo_col = 1L
       )
