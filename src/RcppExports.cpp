@@ -141,6 +141,39 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dirichlet_to_eta
+NumericVector dirichlet_to_eta(NumericVector beta_tilde);
+RcppExport SEXP _pastasales_dirichlet_to_eta(SEXP beta_tildeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type beta_tilde(beta_tildeSEXP);
+    rcpp_result_gen = Rcpp::wrap(dirichlet_to_eta(beta_tilde));
+    return rcpp_result_gen;
+END_RCPP
+}
+// eta_to_dirichlet
+NumericVector eta_to_dirichlet(NumericVector eta);
+RcppExport SEXP _pastasales_eta_to_dirichlet(SEXP etaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type eta(etaSEXP);
+    rcpp_result_gen = Rcpp::wrap(eta_to_dirichlet(eta));
+    return rcpp_result_gen;
+END_RCPP
+}
+// log_jacobian_eta_to_dirichlet
+double log_jacobian_eta_to_dirichlet(NumericVector eta);
+RcppExport SEXP _pastasales_log_jacobian_eta_to_dirichlet(SEXP etaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type eta(etaSEXP);
+    rcpp_result_gen = Rcpp::wrap(log_jacobian_eta_to_dirichlet(eta));
+    return rcpp_result_gen;
+END_RCPP
+}
 // bfgs_cpp
 Rcpp::List bfgs_cpp(const Rcpp::NumericVector& Y, const Rcpp::NumericMatrix& X, Rcpp::NumericVector beta0, Rcpp::NumericVector gamma0, int maxIter, double tol, int verbose, int iter);
 RcppExport SEXP _pastasales_bfgs_cpp(SEXP YSEXP, SEXP XSEXP, SEXP beta0SEXP, SEXP gamma0SEXP, SEXP maxIterSEXP, SEXP tolSEXP, SEXP verboseSEXP, SEXP iterSEXP) {
@@ -257,6 +290,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_pastasales_dnorm_vec_cpp", (DL_FUNC) &_pastasales_dnorm_vec_cpp, 4},
     {"_pastasales_rdirichlet_cpp", (DL_FUNC) &_pastasales_rdirichlet_cpp, 1},
     {"_pastasales_ddirichlet_cpp", (DL_FUNC) &_pastasales_ddirichlet_cpp, 3},
+    {"_pastasales_dirichlet_to_eta", (DL_FUNC) &_pastasales_dirichlet_to_eta, 1},
+    {"_pastasales_eta_to_dirichlet", (DL_FUNC) &_pastasales_eta_to_dirichlet, 1},
+    {"_pastasales_log_jacobian_eta_to_dirichlet", (DL_FUNC) &_pastasales_log_jacobian_eta_to_dirichlet, 1},
     {"_pastasales_bfgs_cpp", (DL_FUNC) &_pastasales_bfgs_cpp, 8},
     {"_pastasales_proj_grad_descent_cpp", (DL_FUNC) &_pastasales_proj_grad_descent_cpp, 9},
     {"_pastasales_get_mt_cpp", (DL_FUNC) &_pastasales_get_mt_cpp, 4},

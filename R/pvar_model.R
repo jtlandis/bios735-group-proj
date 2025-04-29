@@ -77,3 +77,46 @@ fit_pvar_mcmc <- function(Y, X, G, q = 1, mcmc_iter = 2000, burn_in = 0.5, hyper
   res
 }
 
+
+#' Fit PAR Model for all items Using MCMC
+#'
+#' Fit a hierarchical multi-item Poisson Vector AR model using MCMC (Metropolis-within-Gibbs sampler)
+#'
+#' @param Y Matrix of counts (T x N)
+#' @param X Matrix of covariates (T × N)
+#' @param q Number of lags
+#' @param mcmc_iter Number of iterations for MCMC. Default 2000
+#' @param burn_in Proportion of burn-in samples for computing parameter estimates (default 0.5)
+#' @param hyperparams Default NULL. Can be specified as named list of hyperparameters
+#' @param proposal_sd Default 0.05. Standard deviation for Metropolis-Hasting proposal density
+#' @param return_mcmc Default TRUE. Set FALSE to only return point estimates without MCMC samples
+#' @param verbose Default FALSE. Set TRUE to print iterations while running
+#'
+#' @return A list with estimated parameters, log-likelihood, and (optionally) list of MCMC samples for each item
+#' @export
+fit_par_mcmc_allitems <- function(Y, X, q = 1, mcmc_iter = 2000, burn_in = 0.5, hyperparams = NULL, proposal_sd = 0.05, return_mcmc = TRUE, verbose = FALSE) {
+  N <- ncol(Y)
+  mcmcs <- vector(mode = "list", N)
+  Gamma_est <- matrix(nrow = N, ncol = 2)
+  Beta_est <- matrix(nrow = N, ncol = q)
+  ss_idxs <- round(burn_in * mcmc_iter):mcmc_iter
+  
+  # loop over all items and do MCMC
+  for (i in 1:N) {
+    if (verbose) print(paste0('Item = ', i))
+    mcmc_i <- run_mcmc_par_cpp(Y[,i], cbind(1, X[,i]), q, n_iter = mcmc_iter, hyperparams = hyperparams, proposal_sd = proposal_sd, verbose = F)
+    Beta_est[i,] <- colMeans(mcmc_i$beta[ss_idxs,,drop=F])
+    Gamma_est[i,] <- colMeans(mcmc_i$gamma[ss_idxs,,drop=F])
+    mcmcs[[i]] <- mcmc_i
+  }
+  
+  ll <- loglik_pvar_cpp(Y, X, Beta_est, Gamma_est) - sum(lgamma(Y[(q+1):nrow(Y),] + 1))
+
+  if (return_mcmc == T) res <- list(Beta = Beta_est, Gamma = Gamma_est, loglik = ll, mcmc_samps = mcmcs)
+  if (return_mcmc == F) res <- list(Beta = Beta_est, Gamma = Gamma_est, loglik = ll)
+  
+  res
+}
+
+
+

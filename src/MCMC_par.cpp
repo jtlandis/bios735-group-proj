@@ -124,20 +124,63 @@ List run_mcmc_par_cpp(const NumericVector& Y,
     lp_new = loglik_cpp(Y, X, beta_prop, gamma) + R::dbeta(tau_prop, a_tau, b_tau, 1);
     lp_old = loglik_cpp(Y, X, beta, gamma) + R::dbeta(tau, a_tau, b_tau, 1);
 
+
+
+    // Propose tau (global scale for AR terms) with random walk in inv-logit space
+    double eta_curr_tau = std::log(tau / (1.0 - tau)); // current eta = logit(tau)
+    double eta_prop_tau = eta_curr_tau + R::rnorm(0, proposal_sd); // symmetric RW proposal
+    tau_prop = 1.0 / (1.0 + std::exp(-eta_prop_tau)); // inverse logit
+
+    // double tau_prop = R::rbeta(a_tau, b_tau);
+    //NumericVector beta_prop(q);
+    for (int i = 0; i < q; ++i) beta_prop[i] = tau_prop * beta_tilde[i];
+
+    lp_new = loglik_cpp(Y, X, beta_prop, gamma) +
+      R::dbeta(tau_prop, a_tau, b_tau, 1) +
+      std::log(tau_prop) + std::log(1.0 - tau_prop); // Jacobian
+    lp_old = loglik_cpp(Y, X, beta, gamma) +
+      R::dbeta(tau, a_tau, b_tau, 1) +
+      std::log(tau) + std::log(1.0 - tau); // Jacobian
+
     if (std::log(R::runif(0, 1)) < (lp_new - lp_old)) {
       tau = tau_prop;
       beta = clone(beta_prop);
     }
 
-    // Propose beta_tilde
-    NumericVector beta_tilde_prop = rdirichlet_cpp(alpha);
-    for (int i = 0; i < q; ++i)
-      beta_prop[i] = tau * beta_tilde_prop[i];
 
+    // Propose beta_tilde via random walk in unconstrained space
+
+    // NumericVector beta_tilde_prop = rdirichlet_cpp(alpha);
+    NumericVector beta_tilde_prop(q);
+    if (q == 1) {
+      beta_tilde_prop[0] = 1.0;  // Only one component on the simplex
+    } else {
+      NumericVector eta_curr_beta = dirichlet_to_eta(beta_tilde);
+      NumericVector eta_prop_beta = clone(eta_curr_beta);
+      for (int i = 0; i < q - 1; ++i) {
+        eta_prop_beta[i] += R::rnorm(0, proposal_sd);
+      }
+      beta_tilde_prop = eta_to_dirichlet(eta_prop_beta);
+    }
+
+    for (int i = 0; i < q; ++i) {
+      beta_prop[i] = tau * beta_tilde_prop[i];
+    }
+
+    // compute log-lik + prior + Jacobian (skip Jacobian if q == 1)
     lp_new = loglik_cpp(Y, X, beta_prop, gamma) +
-      ddirichlet_cpp(beta_tilde_prop, alpha, true);
+      ddirichlet_cpp(beta_tilde_prop, alpha, true) +
+      (q > 1 ? log_jacobian_eta_to_dirichlet(dirichlet_to_eta(beta_tilde_prop)) : 0.0);
+
     lp_old = loglik_cpp(Y, X, beta, gamma) +
-      ddirichlet_cpp(beta_tilde, alpha, true);
+      ddirichlet_cpp(beta_tilde, alpha, true) +
+      (q > 1 ? log_jacobian_eta_to_dirichlet(dirichlet_to_eta(beta_tilde)) : 0.0);
+
+    // lp_new = loglik_par_cpp(Y, X, beta_prop, gamma) +
+    //   ddirichlet_cpp(beta_tilde_prop, alpha, true);
+    // lp_old = loglik_par_cpp(Y, X, beta, gamma) +
+    //   ddirichlet_cpp(beta_tilde, alpha, true);
+
 
     if (std::log(R::runif(0, 1)) < (lp_new - lp_old)) {
       beta_tilde = clone(beta_tilde_prop);
