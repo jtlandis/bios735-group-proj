@@ -36,7 +36,8 @@ data_eda_brand %>%
   theme(legend.position = "right",
         panel.grid.minor = element_blank())+
   labs(alpha = "Promotion")+
-  guides(color = "none")
+  guides(color = "none") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
   
   
 
@@ -66,7 +67,7 @@ pheatmap(
   corr_data_items,
   cluster_rows = FALSE,
   cluster_cols = FALSE,
-  gaps_row = gaps,    # 👈 nice visible brand separations
+  gaps_row = gaps,
   gaps_col = gaps,
   border_color = NA,
   show_rownames = TRUE,
