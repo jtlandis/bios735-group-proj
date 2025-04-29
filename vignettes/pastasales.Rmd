@@ -28,7 +28,7 @@ data_set_tidy
 
 ```
 
-This data contains time series data for pasta sales for 4 brands. Data made available is the date, brand identifier, item identifier, promotion status, and quantity sold.
+This dataset contains time series data for pasta sales across four brands. The available data includes the date, brand identifier, item identifier, promotion status, and quantity sold.
 
 ```{r}
 ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
@@ -37,7 +37,7 @@ ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
   theme_classic()
 ```
 
-Some brands have more items than others, and perform better on average. Regardless of the number of items, each subject (brand and item pair) has a total of 1798 days of data.
+Certain brands have a greater number of items and exhibit higher average performance. Regardless of the number of items, each subject (defined as a brand and item pair) has data spanning a total of 1798 days.
 
 ```{r}
 group_by(data_set_tidy, brand) |>
@@ -50,7 +50,7 @@ group_by(data_set_tidy, brand) |>
             days_promoted = sum(PROMO))
 ```
 
-We can see from the above table that brand 2 has spent many days promoting their items.
+From the table above, it is evident that Brand 2 has allocated a significant number of days to promoting its items.
 
 ```{r}
 ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
@@ -60,7 +60,7 @@ ggplot(data_set_tidy, aes(x = DATE, y = QTY)) +
   theme_classic()
 ```
 
-Summarising the data further we can see more specific information about each brand and item pair. For instance, most brands spent under 25% of their days promoting their items, with the exception of brand 2 which spent upwards of 90% of their days promoting their items. This over promotion will make it difficult to estimate any baseline sale rate for these items.
+Further summarization of the data reveals detailed insights about each brand and item pair. For example, most brands allocated less than 25% of their days to promotions, with the exception of Brand 2, which promoted its items on over 90% of the days. This extensive promotion strategy complicates the estimation of baseline sales rates for these items.
 
 ```{r}
 brand_item_summary <- data_set_tidy |>
@@ -110,11 +110,11 @@ geom_boxplot() +
 scale_y_continuous(labels = scales::percent_format()) +
 labs(x = "Brand Item", y = "Investment") +
 theme_minimal() +
-labs(title = "Investment by Brand Item", caption = "Each data point represents a brand item. Invesetment is defined as the percent of days promoted over the course of a time series.")
+labs(title = "Investment by Brand Item", caption = "Each data point represents a brand item. Investment is defined as the percentage of days promoted over the course of the time series.")
 
 ```
 
-The `pastasales` package attempts to model these time series data using a Auto-Regressive (AR) model. Below is the main model specification.
+The `pastasales` package is designed to model these time series data using an Auto-Regressive (AR) model. The primary model specification is outlined below.
 
 $$
 \begin{align*}
@@ -123,7 +123,7 @@ $$
 \end{align*}
 $$
 
-where for our priors we assume
+The priors for the model parameters are specified as follows:
 
 $$
 \begin{align*}
@@ -136,9 +136,9 @@ $$
 
 <!-- Should we mention the initial auto-regressive model? -->
 
-## Fitting a single subject
+## Fitting a Single Subject
 
-The `data_set_raw` data set is structured conviently for single subject analysis.
+The `data_set_raw` dataset is structured in a manner that facilitates single-subject analysis.
 
 ```{r}
 
@@ -157,7 +157,7 @@ mcmc_res <- fit_par_mcmc(
 
 ```
 
-With dplyr, we could model multiple items independently.
+Using `dplyr`, it is possible to model multiple items independently.
 
 ```{r}
 
@@ -292,14 +292,14 @@ all_items_dev |>
     labs(title = "Deviance Comparison",
          x = "Model",
          y = "Deviance",
-         caption = "Hierarchical model is not always better than the single model")
+         caption = "The hierarchical model does not always outperform the single model.")
 ```
 
-It is not necessarily true that the hierarchical model is always better than the single model. The deviance between the two are very similar.
+It is not necessarily the case that the hierarchical model consistently outperforms the single model. The deviance values between the two approaches are often comparable.
 
-A  big issue with our data is that promotion is not a good predictor of sales. Some days promotion has no effect on sales while others days are extremely effective.
+A significant challenge with this dataset is that promotion is not a reliable predictor of sales. On some days, promotions have no discernible effect, while on other days, they are highly effective.
 
-We can attempt to model some latent variable of promotion effectiveness as a bornoulli distribution with unknown $\pi_i$.
+We can attempt to model a latent variable representing promotion effectiveness as a Bernoulli distribution with an unknown $\pi_i$.
 
 ```r
 ## Long running process
