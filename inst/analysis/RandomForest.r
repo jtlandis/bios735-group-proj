@@ -6,9 +6,10 @@ library(lubridate)
 library(ggplot2)
 library(caret)
 library(tidyverse)
+library(pastasales)
 
 # ---------- 0. read, parse date ------------------------------------------------
-sales <- read_csv("hierarchical_sales_data.csv") %>%
+sales <- data_set_raw %>%
   mutate(DATE = ymd(DATE)) %>%
   arrange(DATE) # ensure chronological order
 
