@@ -1,4 +1,4 @@
-devtools::load_all()
+library(pastasales)
 library(dplyr)
 library(tidyr)
 ## long-running process
@@ -42,7 +42,9 @@ model_em_all <- dplyr::transmute(
   item = item,
   pi = pi,
   em_spec = list(em$spec),
-  original_spec = list(em$original_spec)
+  original_spec = list(em$original_spec),
+  em_loglik = ll,
+  original_loglik = ll_old
 )
 
 usethis::use_data(model_em_all, overwrite = TRUE)
