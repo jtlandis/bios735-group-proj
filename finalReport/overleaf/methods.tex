@@ -1,0 +1,225 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{bbm}
+\usepackage{natbib}
+\usepackage[margin=1in]{geometry}
+\usepackage{caption}
+\usepackage{comment}
+\usepackage{amssymb, amsfonts}
+
+\title{BIOS 735 Project Proposal}
+\author{Abby Foes, Zheng Lan, Justin Landis, Yu Liu, Alec Reinhardt}
+\date{March 2025}
+
+\begin{document}
+
+\subsection*{Linear Autoregression Model}
+
+\noindent Reference: % Link: https://link.springer.com/chapter/10.1007/978-981-10-0077-5_2#Sec18
+
+\noindent Let $\mathbf{y}_i=(y_{i1},\ldots,y_{iT})'$ and $\mathbf{x}_i=(x_{i1},\ldots,x_{iT})'$ be time series for sales and promotions, respectively, for the $i$-th item, $i=1,\ldots,n$. Let $\mathbf{B}_{\boldsymbol{\beta}}$ be a $T\times T$ matrix of model parameters with elements given by $\mathbf{B}_{\boldsymbol{\beta}}(j,k)=\begin{cases} \beta_{j-k}, & 1 \leq j-k\leq q \\ 0, & o.w.\end{cases}$. For example, for $T=5$ and $q=2$,
+
+\begin{align*}
+    & \mathbf{B}_{\boldsymbol{\beta}} = \begin{bmatrix} 
+    0 & 0 & 0 & 0 & 0 \\
+    \beta_1 & 0 & 0 & 0 & 0 \\
+    \beta_2 & \beta_1 & 0 & 0 & 0 \\
+    0 & \beta_2 & \beta_1 & 0 & 0 \\
+    0 & 0 & \beta_2 & \beta_1 & 0
+    \end{bmatrix}
+\end{align*}
+
+\noindent We can write the AR(q) linear model in matrix form as 
+
+\begin{align}
+    & \mathbf{y}_i=\alpha \mathbf{J}+\mathbf{B}_{\boldsymbol{\beta}} \mathbf{y}_i+\gamma \mathbf{x}_i+\boldsymbol{\epsilon}_i\label{eq:mod1} \\
+    & \boldsymbol{\epsilon}_i \overset{iid}{\sim} \text{MVN}(\boldsymbol{0}, \Sigma) \notag
+\end{align}
+
+\noindent where $\mathbf{J}$ is a length-$T$ vector of ones and we assume a diagonal covariance matrix for the noise term $\boldsymbol{\epsilon}_i=(\epsilon_{i1},\ldots,\epsilon_{iT})'$ , i.e. $\Sigma=\sigma^2 \mathbf{I}$. To get the log-likelihood of $\mathbf{y}_i$, we can rewrite the model as
+
+\begin{align*}
+    & \mathbf{y}_i=(\mathbf{I}-\mathbf{B}_{\boldsymbol{\beta}})^{-1} (\alpha \mathbf{J}+\gamma \mathbf{x}_i+\boldsymbol{\epsilon}_i)
+\end{align*}
+
+
+
+\noindent This expression is only valid under the assumption that $\mathbf{B}_{\boldsymbol{\beta}}$ defines a stationary AR(q) process, i.e., $\mathbf{I} - \mathbf{B}_{\boldsymbol{\beta}}$ is invertible. We observe now by properties of multivariate normal distributions that
+\begin{align*}
+    & \mathbf{y}_i \sim \text{MVN}(\boldsymbol{\mu}_i, \mathbf{V}) \\
+    & \boldsymbol{\mu}_i = \mathbf{A}_{\boldsymbol{\beta}}^{-1} (\alpha \mathbf{J}+\gamma \mathbf{x}_i) \\
+    & \mathbf{V} = \sigma^2 \mathbf{A}_{\boldsymbol{\beta}}^{-1} (\mathbf{A}_{\boldsymbol{\beta}}^{-1})' \\
+    & \mathbf{A}_{\boldsymbol{\beta}} = \mathbf{I}-\mathbf{B}_{\boldsymbol{\beta}}
+\end{align*}
+
+
+\noindent Now, for the log-likelihood, we have
+
+
+
+\begin{align*}
+    & \ell(\alpha,\beta_1,\ldots,\beta_q, \gamma,\sigma^2)=-\frac{nT}{2} \log(2\pi)-\frac{n}{2} \log (|\mathbf{V}|)-\frac{1}{2}\sum_{i=1}^n (\mathbf{y}_i-\boldsymbol{\mu}_i)' \mathbf{V}^{-1} (\mathbf{y}_i-\boldsymbol{\mu}_i) \\ 
+    & =-\frac{nT}{2} \log(2\pi) -\frac{n}{2} \log(\sigma^{2}|\mathbf{A}_{\boldsymbol{\beta}}|^{-2}) -\frac{1}{2\sigma^2} \sum_{i=1}^n [\mathbf{A}_{\boldsymbol{\beta}}(\mathbf{y}_i-\mathbf{A}_{\boldsymbol{\beta}}^{-1}(\alpha \mathbf{J} + \gamma \mathbf{x}_i))]' \mathbf{A}_{\boldsymbol{\beta}}(\mathbf{y}_i-\mathbf{A}_{\boldsymbol{\beta}}^{-1}(\alpha \mathbf{J} + \gamma \mathbf{x}_i))\\
+    & = -\frac{nT}{2} \log(2\pi)-\frac{nT}{2} \log (\sigma^2)-\frac{1}{2\sigma^2}\sum_{i=1}^n  \|\mathbf{A}_{\boldsymbol{\beta}}\mathbf{y}_i- \alpha \mathbf{J}-\gamma \mathbf{x}_i\|^2
+    %& = -\frac{nT}{2} \log(2\pi)-\frac{nT}{2} \log (\sigma^2)-\frac{1}{2\sigma^2}\sum_{i=1}^n \sum_{t=1}^T \left(y_{it}-\sum_{l=1, l < t}^q \beta_ly_{i,t-l}- \alpha -\gamma x_{it}\right)^2 
+\end{align*}
+
+\noindent where
+\begin{align*}
+    \mathbf{A}_{\boldsymbol{\beta}} \mathbf{y}_i=(y_{i1}, y_{i2}-\beta_1 y_{i1}, \ldots, y_{iq}-\sum_{l=1}^q \beta_l y_{i,q-l}, \ldots, y_{iT}-\sum_{l=1}^q \beta_l y_{i,T-l})'
+\end{align*}
+
+
+\noindent Let $\mathbf{r}_{i}=\mathbf{r}_i(\alpha,\boldsymbol{\beta},\gamma)=\mathbf{A}_{\boldsymbol{\beta}} \mathbf{y}_i-\alpha \mathbf{J}-\gamma \mathbf{x}_i$ be the model residuals, where $\mathbf{r}_i=(r_{i1},\ldots,r_{iT})'$. The gradient of the log-likelihood can be expressed in terms of the following derivatives:
+
+\begin{align*}
+    & \frac{\partial \ell}{\partial \beta_1}=\frac{1}{\sigma^2} \sum_{i=1}^n[y_{i1}r_{i2}+\ldots+y_{i,T-1}r_{iT}]=\frac{1}{\sigma^2}\sum_{i=1}^n \sum_{t=1}^{T-1} y_{it} r_{i,t+1} \\
+    %& \frac{\partial \ell}{\partial \beta_2}=\frac{1}{\sigma^2} \sum_{i=1}^n[y_{i1}r_{i3}+\ldots+y_{i,T-2}r_{iT}] \\
+    & \vdots \\
+    & \frac{\partial \ell}{\partial \beta_q}=\frac{1}{\sigma^2} \sum_{i=1}^n[y_{i1}r_{i,q+1}+\ldots+y_{i,T-q}r_{iT}]=\frac{1}{\sigma^2} \sum_{i=1}^n \sum_{t=1}^{T-q} y_{it} r_{i,t+q} \\
+    & \frac{\partial \ell}{\partial \alpha} =\frac{1}{\sigma^2} \sum_{i=1}^n [r_{i1}+\ldots+r_{iT}]=\frac{1}{\sigma^2} \sum_{i=1}^n \boldsymbol{r}_i' \mathbf{J} \\
+    &\frac{\partial \ell}{\partial \gamma} = \frac{1}{ \sigma^2}\sum_{i=1}^n\boldsymbol{r}_i^\prime\boldsymbol{x}_i \\
+    & \frac{\partial \ell}{\partial \sigma^2} = -\frac{nT}{2 \sigma^2} + \frac{1}{2\sigma^4} \sum_{i=1}^n \|\mathbf{r}_i\|^2
+\end{align*}
+
+
+
+
+
+
+
+Since we have some correlations among time points, for general $\Sigma$, we have the log-likelihood,
+\begin{align}
+    \ell(\alpha,\beta_1,\cdots,\beta_q,\gamma,\Sigma) = -\frac{nT}{2}\log(|\Sigma|) - \frac{1}{2}\sum_{i=1}^n(\mathbf{A}_{\boldsymbol{\beta}}\mathbf{y}_i- \alpha \mathbf{J}-\gamma \mathbf{x}_i)^\prime\Sigma^{-1}(\mathbf{A}_{\boldsymbol{\beta}}\mathbf{y}_i- \alpha \mathbf{J}-\gamma \mathbf{x}_i)\nonumber
+\end{align}
+
+
+
+
+\subsection*{Mixed Effects Autoregression Model}
+
+\noindent For the hierarchical approach, we will use a Bayesian formulation. Let $h=1,\ldots,H$ index the brand, and $i=1,\ldots,n_h$ index item for brand $h$. We extend Model \ref{eq:mod1} using the following linear mixed effects autoregression model:
+
+\begin{align}
+    & \mathbf{y}_{hi} = (\alpha_0+a_h)\mathbf{J}+\mathbf{B}_{\beta,h}\mathbf{y}_{hi}+(\gamma+g_h) \mathbf{x}_{hi}+\boldsymbol{\epsilon}_{hi} \label{eq:mod2} \\
+    & \boldsymbol{\epsilon}_{hi} \overset{iid}{\sim} \text{MVN}(\boldsymbol{0}, \Sigma_h)
+    %\sum_{l=1}^q (\beta_l+b_{h,l}) y_{hi,t-l} + (\gamma+g_h) x_{hit} + \epsilon_{hit}     \label{eq:model2} \\
+    %& \epsilon_{hit} \sim N(0,\sigma_h^2)
+    %& \alpha_h \sim N(0,\sigma_{\alpha}^2), \ b_{h,l} \sim N(0,\sigma_{\beta}^2), \ g_h \sim N(0,\sigma_{\gamma}^2), \ \epsilon_t \sim N(0,\sigma_{\epsilon}^2) \notag
+\end{align}
+
+\noindent where $\mathbf{B}_{\beta,h}$ is a $T\times T$ matrix with elements $\mathbf{B}_{\beta,h}(j,k)=\begin{cases} \beta_{j-k}+b_{h,j-k}, & 1 \leq j-k\leq q \\
+0, & o.w.
+\end{cases}$ and we assume for the noise covariance that $\Sigma_h=\sigma_h^2 \mathbf{I}$. Compared to Model \ref{eq:mod1}, Model \ref{eq:mod2} now includes brand-specific effects, i.e. a random intercept ($a_h$), random slopes for autoregressive coefficients ($b_{h,l}$'s), and a random slope for effect of promotion ($g_h$).
+
+
+\noindent We use the following hierarchical priors:
+
+\begin{align*}
+    & \alpha_0 \sim N(\mu_{\alpha},\tau_{\alpha}), \ \beta_l \sim N(\mu_{\beta,l}, \tau_{\beta,l}), \ \gamma \sim N(\mu_{\gamma}, \tau_{\gamma}) \\
+    & a_h \sim N(0, \rho_a), \ b_{h,l} \sim N(0, \rho_{b,l}), \ g_h \sim N(0,\rho_g) \\
+    & \rho_a \sim \text{IG}(\nu_{a}, \lambda_{a}), \ \rho_{b,l} \sim \text{IG}(\nu_{b}, \lambda_{b}), \ \rho_g \sim \text{IG}(\nu_{g}, \lambda_{g}) \\
+    & \sigma_h^2 \sim \text{IG}(\nu_{\epsilon}, \lambda_{\epsilon})
+\end{align*}
+
+\noindent where the $\mu$'s, $\tau$'s, $\nu$'s, and $\lambda$'s are fixed hyperparameters and $\text{IG}(\cdot)$ is the Inverse Gamma distribution. %The model is hierarchical in that the variance components for the brand-specific effects (i.e. $\rho_h$ terms) are assumed to follow a common distribution across brands. The brand-specific effects also lead to correlations across items ($i$) for a given brand ($h$). 
+For model fitting, we use Gibbs sampling, which relies on the full conditional posteriors to approximately sample from the joint posterior distribution of model parameters. Let $\boldsymbol{\theta}$ be the vector of model parameters, and $\boldsymbol{\theta}^{(-z)}$ be the parameters excluding parameter $z$. Also define model residuals $\mathbf{r}_{hi}$ and $\mathbf{r}_{hi}^{(-z)}$ similarly, where $\mathbf{r}_{hi}=\mathbf{y}_{hi}-(\alpha_0+a_h) \mathbf{J}-\mathbf{B}_{\beta,h} \mathbf{y}_{hi}-(\gamma+g_h) \mathbf{x}_{hi}$. To derive the conditional posterior distributions, we make use of the fact that there is conditional independence in the $\mathbf{y}_{hi}$ vectors, conditioning on random effects. We start with the $\alpha_0$ term:
+
+\begin{align*}
+    & p(\alpha_0 | \mathbf{Y}, \mathbf{X}, \boldsymbol{\theta}^{(-\alpha_0)}) \propto p(\mathbf{Y}|\mathbf{X}, \boldsymbol{\theta}) p(\alpha_0) \\
+    & \propto \exp\left[-\frac{1}{2} \sum_{h=1}^H \sum_{i=1}^{n_h} \frac{\|\mathbf{r}_{hi} \|^2}{\sigma_h^2} \right] \exp\left[-\frac{(\alpha_0-\mu_{\alpha})^2}{2\tau_{\alpha}}\right] \\
+    & \propto \exp\left[-\frac{1}{2}\left( \sum_{h=1}^H \sum_{i=1}^{n_h} \sum_{t=1}^T \frac{(r_{hit}^{(-\alpha_0)}-\alpha_0)^2}{\sigma_h^2}+\frac{(\alpha_0-\mu_{\alpha})^2}{\tau_{\alpha}} \right)\right] \\
+    & \propto \exp\left[-\frac{1}{2}\left(\alpha_0^2\left(\sum_{h=1}^H n_h T \sigma_h^{-2}+\tau_{\alpha}^{-1} \right)-2\alpha_0\left(\sum_{h,i,t} r_{hit}^{(-\alpha_0)} \sigma_h^{-2}+\mu_{\alpha} \tau_{\alpha}^{-1} \right) \right) \right] \\
+    & \propto \exp\left[-\frac{1}{2{\tau}_{\alpha}^*}(\alpha_0-{\mu}_{\alpha}^*)^2 \right] \\
+    & \implies \alpha_0 | \mathbf{Y}, \mathbf{X}, \boldsymbol{\theta}^{(-\alpha_0)} \sim N({\mu}^*_{\alpha}, {\tau}^*_{\alpha})
+\end{align*}
+
+\noindent where
+\begin{align*}
+    & {\mu}^*_{\alpha}={\tau}^*_{\alpha}\left(\sum_{h=1}^H \sum_{i=1}^{n_h} \frac{\mathbf{J}'\mathbf{r}_{hi}^{(-\alpha_0)}}{\sigma_h^2}+\frac{\mu_{\alpha}}{ \tau_{\alpha}} \right), \ {\tau}^*_{\alpha}=\left(\sum_{h=1}^H \frac{n_h T}{ \sigma_h^{2}}+\frac{1}{\tau_{\alpha}} \right)^{-1}
+\end{align*}
+
+\noindent We use similar derivations to find the following:
+
+\begin{align*}
+    & \gamma | \cdot \sim N({\mu}^*_{\gamma}, {\tau}^*_{\gamma}), \ {\mu}^*_{\gamma}={\tau}^*_{\gamma}\left(\sum_{h=1}^H \sum_{i=1}^{n_h} \frac{\mathbf{x}_{hi}' \mathbf{r}_{hi}^{(-\gamma)}}{\sigma_h^2}+\frac{\mu_{\gamma}}{\tau_{\gamma}}  \right), \  {\tau}^*_{\gamma} = \left( \sum_{h=1}^H \sum_{i=1}^{n_h} \frac{\mathbf{x}_{hi}' \mathbf{x}_{hi}}{\sigma_h^2}  +\frac{1}{\tau_{\gamma}} \right)^{-1} \\
+    & \beta_l | \cdot \sim N({\mu}^*_{\beta,l}, {\tau}^*_{\beta,l}), \ {\mu}^*_{\beta,l}={\tau}^*_{\beta,l} \left(\sum_{h=1}^H \sum_{i=1}^{n_h} \sum_{t=l+1}^T \frac{y_{hi,t-l} r_{hit}^{(-\beta_l)}}{\sigma_h^2}+\frac{\mu_{\beta,l}}{\tau_{\beta,l}} \right), \ {\tau}^*_{\beta,l}=\left(\sum_{h=1}^H \sum_{i=1}^{n_h} \sum_{t=l+1}^T \frac{y_{hi,t-l}^2}{\sigma_h^2} +\frac{1}{\tau_{\beta,l}} \right)^{-1}
+\end{align*}
+
+
+\noindent For the random effects, we have
+\begin{align*}
+    & a_h | \cdot \sim N({\mu}^*_{a,h}, {\tau}^*_{a,h}), \ {\mu}^*_{a,h}={\tau}^*_{a,h} \left(\sum_{i=1}^{n_h} \frac{\mathbf{J}' \mathbf{r}_{hi}^{(-a_h)}}{\sigma_h^2}\right), \ {\tau}^*_{a,h} = \left(\frac{T n_h}{\sigma_h^2}+\frac{1}{\rho_a} \right)^{-1} \\
+    & g_h|\cdot \sim N({\mu}^*_{g,h}, {\tau}^*_{g,h}), \ {\mu}^*_{g,h}={\tau}^*_{g,h} \left(\sum_{i=1}^{n_h} \frac{\mathbf{x}_{hi}' \mathbf{r}_{hi}^{(-g_h)}}{\sigma_h^2} \right), \ {\tau}^*_{g,h}=\left(\sum_{i=1}^{n_h} \frac{\mathbf{x}_{hi}' \mathbf{x}_{hi}}{\sigma_h^2}+\frac{1}{\rho_g} \right)^{-1} \\
+    & b_{h,l}|\cdot \sim N({\mu}^*_{b,h,l}, \tau^*_{b,h,l}), \ \mu^*_{b,h,l} = \tau_{b,h,l}^* \left(\sum_{i=1}^{n_h} \sum_{t=l+1}^T \frac{y_{hi,t-l} r_{hit}^{(-b_{h,l})}}{\sigma_h^2} \right), \tau_{b,h,l}^*= \left(\sum_{i=1}^{n_h} \sum_{t=l+1}^T \frac{y_{hi,t-l}^2}{\sigma_h^2}+\frac{1}{\rho_{b,l}} \right)^{-1}
+\end{align*}
+
+\noindent For the random effect variances,
+\begin{align*}
+    %& p(\rho_a|\cdot) \propto \prod_{h=1}^H p(a_h|\rho_a)p(\rho_a) \\
+    %& \propto (\rho_a)^{-(H/2+\nu_a)-1}\exp\left(-\frac{\frac{1}{2} \sum_{h=1}^H a_h^2+\lambda_a}{\rho_a} \right) \\
+    %& \implies \rho_a | \cdot \sim \text{IG}\left(\nu_a+\frac{H}{2}, \ \lambda_a+\frac{1}{2} \sum_{h=1}^H a_h^2 \right) \\
+    & \rho_a | \cdot \sim \text{IG}\left(\nu_a+\frac{H}{2}, \ \lambda_a+\frac{1}{2} \sum_{h=1}^H a_h^2 \right) \\
+    & \rho_{g} | \cdot \sim \text{IG}\left(\nu_g+\frac{H}{2}, \ \lambda_g+\frac{1}{2} \sum_{h=1}^H g_h^2 \right) \\
+    & \rho_{b,l} | \cdot \sim \text{IG}\left(\nu_{b}+\frac{H}{2}, \ \lambda_b+\frac{1}{2} \sum_{h=1}^H b_{h,l}^2 \right)
+\end{align*}
+
+\noindent Lastly, for the brand-specific residual variance, we have
+
+\begin{align*}
+    & p(\sigma_h^2|\cdot)\propto (\sigma_h^2)^{-(n_h T/2+\nu_{\epsilon})-1} \exp\left[-\frac{1}{\sigma_h^2} \left(\frac{1}{2}\sum_{i=1}^{n_h} \|\mathbf{r}_{hi}\|^2+\lambda_{\epsilon}\right)\right] \\
+    & \sigma_h^2|\cdot \sim \text{IG}\left(\nu_{\epsilon}+\frac{n_h T}{2}, \lambda_{\epsilon}+\frac{1}{2} \sum_{i=1}^{n_h} \|\mathbf{r}_{hi}\|^2 \right)
+\end{align*}
+
+
+
+
+\subsection*{Poisson Autoregression (PAR) Model}
+
+\noindent Suppose the first $q$ timepoints of $y_t$ are treated as fixed. We consider the model for $q+1 \leq t \leq T$:
+
+\begin{align*}
+    & y_t | m_t \sim \text{Poisson}(m_t) \\
+    & m_t =\sum_{l=1}^q \beta_{l} y_{t-l} + \left(1-\sum_{l=1}^q \beta_l \right) \exp(\mathbf{x}_t^T \boldsymbol{\gamma})
+\end{align*}
+
+\noindent where for our priors we assume
+\begin{align*}
+    & \boldsymbol{\gamma} \sim N(\boldsymbol{\mu}, \Sigma_{\gamma}) \\
+    & \Sigma_{\gamma} \sim \text{Inv-Wishart}(\nu, \Psi)\\
+    & \tilde{\boldsymbol{\beta}}_i | \tau \sim \text{Dirichlet}(\boldsymbol{\alpha}), \ \beta_{i,l}=\tau \tilde{\beta}_{i,l} \\
+    & \tau \sim \text{Beta}(a,b)
+\end{align*}
+
+\noindent The priors on $\tilde{\boldsymbol{\beta}}$ and $\tau$ helps ensure stationarity in the conditional mean $m_t$ by enforcing the constraint that $0 \leq \sum_{l=1}^q \beta_l \leq 1$. For hyperparameters, we set $\boldsymbol{\mu}=0$, $\nu=p+2$, $\Psi=\mathbf{I}_{p \times p}$, $\alpha_q=1/q$, and $a=b=1$.
+
+\noindent The full likelihood comes from the following expression:
+
+\begin{align*}
+    & \mathcal{L}(\boldsymbol{\theta})=p(y_{q+1},\ldots,y_T|y_1,\ldots,y_q, \mathbf{X}, \boldsymbol{\theta})=\prod_{t=q+1}^T p(y_t|y_{t-1},\ldots,y_{t-q}, \mathbf{x}_t, \boldsymbol{\theta}) \\
+    & = \prod_{t=q+1}^T \frac{m_t^{y_t} e^{-m_t}}{y_t!} \propto \exp\left\{\sum_{t=q+1}^T y_t \log(m_t) -m_t\right\}
+\end{align*}
+
+\noindent where $m_t = \sum_{l=1}^q \beta_{l} y_{t-l} + \left(1-\sum_{l=1}^q \beta_l \right) \exp(\mathbf{x}_t^T \boldsymbol{\gamma})$
+
+\subsection*{Vector PAR}
+\noindent We may extend the PAR model to vector-valued time series. Let $\mathbf{Y}_t=(y_{1t},\ldots,y_{nt})'$ and $\mathbf{X}_t = (x_{1t},\ldots,x_{nt})'$ be sales and promotions, respectively across all $n$ items, for a given timepoint t. Let $\mathbf{G}=(g_1,\ldots,g_n)$ be a brand indicator vector, where $g_i \in \{1,\ldots,B\}$.
+
+\begin{align*}
+    & y_{it} | m_{it} \sim \text{Poisson}(m_{it}) \\
+    & m_{it} = \sum_{l=1}^q \beta_{i,l} y_{i,t-l}+\left(1-\sum_{l=1}^q \beta_{i,l} \right) \exp(\mathbf{x}_{it}^T  \boldsymbol{\gamma}_i)
+\end{align*}
+
+\noindent To pool information across brands/items, we use the following hierarchical priors:
+
+\begin{align*}
+    & \boldsymbol{\gamma}_i \sim N(\boldsymbol{\mu}_{g_i}, \Sigma_{g_i}) \\
+    & \boldsymbol{\mu}_{g_i} \sim N(\boldsymbol{\mu}_0, \Sigma_0), \ \Sigma_{g_i} \sim \text{Inv-Wishart}(\nu, \Psi) \\
+    & \tilde{\boldsymbol{\beta}}_i | \tau_{g_i} \sim \text{Dirichlet}(\boldsymbol{\alpha}_{g_i}), \ \beta_{i,l}=\tau_{g_i} \tilde{\beta}_{i,l} \\
+    & \boldsymbol{\alpha}_{g_i} \sim \text{Dirichlet}(\alpha_0, \ldots, \alpha_0) , \ \tau_{g_i} \sim \text{Beta}(a_{\tau},b_{\tau})
+\end{align*}
+
+\noindent where $\boldsymbol{\mu}_0$, $\Sigma_0$, $a_{\rho}$, $b_{\rho}$, $\alpha_0$, $a$, and $b$ are fixed hyperparameters. For analysis, we set $\boldsymbol{\mu}_0=\boldsymbol{0}$, $\Sigma_0=\sigma_0^2 \mathbf{I}$, $a_{\rho}=b_{\rho}=1$, $\alpha_0=q^{-1}$, $a=b=1$, and $\sigma_0^2=1$.
+
+\end{document}
