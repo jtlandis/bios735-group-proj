@@ -1,14 +1,12 @@
 Package: pastasales
 Title: Poisson Auto-Regression Model for Sales Data
-Version: 0.0.1.9003
-Authors@R:
-c(
+Version: 0.0.1.9004
+Authors@R: c(
     person("Justin", "Landis", , "jtlandis314@gmail.com", role = c("aut", "cre")),
-    person("Alec", "Reinhardt", , "alec.e.reinhardt@gmail.com", role = c("aut", "cre")),
-    person("Abby", "Foes", , "agfoes@gmail.com", role = c("aut", "cre")),
-    person("Zheng", "Lan", , "zhenglan0822@gmail.com", role = c("aut", "cre")),
-    person("Yu", "Liu", , "haibara.yl02@gmail.com", role = c("aut", "cre"))
-)
+    person("Alec", "Reinhardt", , "alec.e.reinhardt@gmail.com", role = c("aut")),
+    person("Abby", "Foes", , "agfoes@gmail.com", role = c("aut")),
+    person("Zheng", "Lan", , "zhenglan0822@gmail.com", role = c("aut")),
+    person("Yu", "Liu", , "haibara.yl02@gmail.com", role = c("aut")))
 Description: This package includes pastasales and provides a Poisson auto-regression model for sales data. It offers functions for fitting with BFGS or Bayesian MCMC approach.
 License: GPL (>= 3)
 Encoding: UTF-8
@@ -32,8 +30,11 @@ Imports:
     tidyr,
     utils
 Suggests:
+    caret,
+    cowplot,
     ggplot2,
     knitr,
+    lubridate,
     mvtnorm,
     rmarkdown,
     scales,
