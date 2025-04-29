@@ -40,6 +40,7 @@ model_em_all <- data_set_tidy |>
 model_em_all <- dplyr::transmute(
   model_em_all,
   item = item,
+  pi = pi,
   em_spec = list(em$spec),
   original_spec = list(em$original_spec)
 )
