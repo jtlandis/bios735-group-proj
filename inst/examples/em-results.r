@@ -7,14 +7,13 @@ library(ggplot2)
 ### has missing values... - did not fix this yet...
 model_em_all <- data_set_tidy |>
   mutate(
-    data_set_tidy_index = seq_len(n()),
     brand = as.factor(brand),
     item = as.integer(item)
   ) |>
   group_by(brand, item) |>
   summarise(
     model = par_model_mat(
-      pick(DATE, QTY, PROMO, data_set_tidy_index),
+      pick(DATE, QTY, PROMO),
       QTY ~ PROMO,
       nlag = 5
     ) |>
